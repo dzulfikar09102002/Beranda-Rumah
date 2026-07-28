@@ -77,7 +77,7 @@ export default function Welcome({
 
     return (
         <>
-            <Head title="Dharma Wanita Persatuan Kota Surabaya" />
+            <Head title="Selamat Datang" />
 
             <style>{`
                 @import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Nunito+Sans:wght@300;400;600&display=swap');

@@ -4,6 +4,6 @@ export default function AppLogoIcon(
     props: ImgHTMLAttributes<HTMLImageElement>,
 ) {
     return (
-        <img src="/assets/images/logo-dharmawanita.png" alt="Logo" {...props} />
+        <img src="/assets/images/logo-brand2.png" alt="Logo" {...props} />
     );
 }

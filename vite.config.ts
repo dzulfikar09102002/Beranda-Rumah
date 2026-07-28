@@ -6,14 +6,8 @@ import laravel from 'laravel-vite-plugin';
 import { defineConfig } from 'vite';
 export default defineConfig({
     server: {
-        host: '0.0.0.0',
+        host: '127.0.0.1',
         port: 5173,
-        cors: {
-            origin: '*',
-        },
-        hmr: {
-            host: '10.0.70.90',
-        },
     },
     plugins: [
         laravel({

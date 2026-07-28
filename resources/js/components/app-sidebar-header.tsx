@@ -23,7 +23,7 @@ export function AppSidebarHeader({
             <Button variant="destructive" asChild>
                 <Link href={logout()} data-test="logout-button">
                     <LogOut />
-                    <span className="hidden lg:inline"> Log out</span>
+                    <span className="hidden lg:inline"> Keluar</span>
                 </Link>
             </Button>
         </header>
