@@ -1,0 +1,611 @@
+@import 'tailwindcss';
+
+@import 'tw-animate-css';
+
+@source '../views';
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+    --font-sans:
+        'Instrument Sans', ui-sans-serif, system-ui, sans-serif,
+        'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
+        'Noto Color Emoji';
+
+    --radius-lg: var(--radius);
+    --radius-md: calc(var(--radius) - 2px);
+    --radius-sm: calc(var(--radius) - 4px);
+
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+
+    --color-chart-1: var(--chart-1);
+    --color-chart-2: var(--chart-2);
+    --color-chart-3: var(--chart-3);
+    --color-chart-4: var(--chart-4);
+    --color-chart-5: var(--chart-5);
+
+    --color-sidebar: var(--sidebar);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-ring: var(--sidebar-ring);
+}
+
+:root {
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.145 0 0);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.145 0 0);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.145 0 0);
+    --primary: oklch(0.205 0 0);
+    --primary-foreground: oklch(0.985 0 0);
+    --secondary: oklch(0.97 0 0);
+    --secondary-foreground: oklch(0.205 0 0);
+    --muted: oklch(0.97 0 0);
+    --muted-foreground: oklch(0.556 0 0);
+    --accent: oklch(0.97 0 0);
+    --accent-foreground: oklch(0.205 0 0);
+    --destructive: oklch(0.577 0.245 27.325);
+    --destructive-foreground: oklch(0.577 0.245 27.325);
+    --border: oklch(0.922 0 0);
+    --input: oklch(0.922 0 0);
+    --ring: oklch(0.87 0 0);
+    --chart-1: oklch(0.646 0.222 41.116);
+    --chart-2: oklch(0.6 0.118 184.704);
+    --chart-3: oklch(0.398 0.07 227.392);
+    --chart-4: oklch(0.828 0.189 84.429);
+    --chart-5: oklch(0.769 0.188 70.08);
+    --radius: 0.625rem;
+    --sidebar: oklch(0.985 0 0);
+    --sidebar-foreground: oklch(0.145 0 0);
+    --sidebar-primary: oklch(0.205 0 0);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.97 0 0);
+    --sidebar-accent-foreground: oklch(0.205 0 0);
+    --sidebar-border: oklch(0.922 0 0);
+    --sidebar-ring: oklch(0.87 0 0);
+}
+
+.dark {
+    --background: oklch(0.145 0 0);
+    --foreground: oklch(0.985 0 0);
+    --card: oklch(0.145 0 0);
+    --card-foreground: oklch(0.985 0 0);
+    --popover: oklch(0.145 0 0);
+    --popover-foreground: oklch(0.985 0 0);
+    --primary: oklch(0.985 0 0);
+    --primary-foreground: oklch(0.205 0 0);
+    --secondary: oklch(0.269 0 0);
+    --secondary-foreground: oklch(0.985 0 0);
+    --muted: oklch(0.269 0 0);
+    --muted-foreground: oklch(0.708 0 0);
+    --accent: oklch(0.269 0 0);
+    --accent-foreground: oklch(0.985 0 0);
+    --destructive: oklch(0.396 0.141 25.723);
+    --destructive-foreground: oklch(0.637 0.237 25.331);
+    --border: oklch(0.269 0 0);
+    --input: oklch(0.269 0 0);
+    --ring: oklch(0.439 0 0);
+    --chart-1: oklch(0.488 0.243 264.376);
+    --chart-2: oklch(0.696 0.17 162.48);
+    --chart-3: oklch(0.769 0.188 70.08);
+    --chart-4: oklch(0.627 0.265 303.9);
+    --chart-5: oklch(0.645 0.246 16.439);
+    --sidebar: oklch(0.205 0 0);
+    --sidebar-foreground: oklch(0.985 0 0);
+    --sidebar-primary: oklch(0.985 0 0);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.269 0 0);
+    --sidebar-accent-foreground: oklch(0.985 0 0);
+    --sidebar-border: oklch(0.269 0 0);
+    --sidebar-ring: oklch(0.439 0 0);
+}
+
+@layer base {
+    * {
+        @apply border-border;
+    }
+
+    body {
+        @apply bg-background text-foreground;
+    }
+}
+
+:root {
+    --brown-deep: #5c2e0a;
+    --brown-mid: #8b4513;
+    --brown-warm: #c17b3a;
+    --gold-bright: #e6a817;
+    --gold-pale: #f5d88a;
+    --cream: #fdf6ed;
+    --text-dark: #2c1a0e;
+    --text-muted: #7a5c42;
+}
+
+.dw-root * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+.dw-root {
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    display: flex;
+}
+
+/* ── LEFT PANEL ── */
+.dw-left {
+    display: none;
+    width: 45%;
+    background: linear-gradient(
+        160deg,
+        var(--brown-deep) 0%,
+        var(--brown-mid) 45%,
+        var(--brown-warm) 100%
+    );
+    position: relative;
+    overflow: hidden;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem;
+}
+
+@media (min-width: 1024px) {
+    .dw-left {
+        display: flex;
+    }
+    .dw-right {
+        width: 55%;
+    }
+}
+
+/* Batik SVG pattern overlay */
+.dw-batik {
+    position: absolute;
+    inset: 0;
+    opacity: 0.07;
+    background-image:
+        radial-gradient(
+            circle at 20% 20%,
+            var(--gold-bright) 1px,
+            transparent 1px
+        ),
+        radial-gradient(
+            circle at 80% 80%,
+            var(--gold-bright) 1px,
+            transparent 1px
+        ),
+        radial-gradient(
+            circle at 50% 50%,
+            var(--gold-pale) 1px,
+            transparent 1px
+        ),
+        radial-gradient(
+            circle at 10% 70%,
+            var(--gold-bright) 1px,
+            transparent 1px
+        ),
+        radial-gradient(
+            circle at 90% 30%,
+            var(--gold-pale) 1px,
+            transparent 1px
+        );
+    background-size:
+        60px 60px,
+        60px 60px,
+        80px 80px,
+        40px 40px,
+        40px 40px;
+}
+
+.dw-batik-lines {
+    position: absolute;
+    inset: 0;
+    opacity: 0.04;
+    background-image: repeating-linear-gradient(
+        45deg,
+        var(--gold-bright) 0px,
+        var(--gold-bright) 1px,
+        transparent 1px,
+        transparent 28px
+    );
+}
+
+/* Decorative circles */
+.dw-circle {
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid rgba(230, 168, 23, 0.2);
+}
+.dw-circle-1 {
+    width: 340px;
+    height: 340px;
+    top: -80px;
+    right: -80px;
+}
+.dw-circle-2 {
+    width: 220px;
+    height: 220px;
+    top: -30px;
+    right: -30px;
+    border-color: rgba(230, 168, 23, 0.12);
+}
+.dw-circle-3 {
+    width: 260px;
+    height: 260px;
+    bottom: -60px;
+    left: -60px;
+}
+.dw-circle-4 {
+    width: 160px;
+    height: 160px;
+    bottom: -20px;
+    left: -20px;
+    border-color: rgba(230, 168, 23, 0.12);
+}
+
+/* Logo */
+.dw-logo-ring {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    border: 3px solid var(--gold-bright);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 2rem;
+    position: relative;
+    animation: ringPulse 3s ease-in-out infinite;
+}
+
+.dw-logo-ring::before {
+    content: '';
+    position: absolute;
+    inset: -8px;
+    border-radius: 50%;
+    border: 1px solid rgba(230, 168, 23, 0.3);
+}
+
+.dw-logo-inner {
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--gold-bright), #c8890f);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Playfair Display', serif;
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--brown-deep);
+    letter-spacing: 1px;
+}
+
+@keyframes ringPulse {
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 rgba(230, 168, 23, 0.4);
+    }
+    50% {
+        box-shadow: 0 0 0 12px rgba(230, 168, 23, 0);
+    }
+}
+
+.dw-brand-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem;
+    font-weight: 700;
+    color: #fff;
+    text-align: center;
+    line-height: 1.2;
+    margin-bottom: 0.25rem;
+}
+
+.dw-brand-subtitle {
+    font-size: 0.95rem;
+    font-weight: 300;
+    color: var(--gold-pale);
+    text-align: center;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 1.5rem;
+}
+
+.dw-divider {
+    width: 60px;
+    height: 2px;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        var(--gold-bright),
+        transparent
+    );
+    margin: 0 auto 1.5rem;
+}
+
+.dw-brand-desc {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.75);
+    line-height: 1.8;
+    text-align: center;
+    max-width: 280px;
+    margin: 0 auto;
+}
+
+.dw-badge {
+    margin-top: 2rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(230, 168, 23, 0.15);
+    border: 1px solid rgba(230, 168, 23, 0.35);
+    color: var(--gold-pale);
+    font-size: 0.75rem;
+    letter-spacing: 1px;
+    padding: 6px 16px;
+    border-radius: 20px;
+}
+
+.dw-pillars {
+    display: flex;
+    justify-content: center;
+    gap: 1.5rem;
+    margin-top: 2.5rem;
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.35);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+/* Slide animations */
+.dw-slide-left {
+    animation: slideL 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.dw-slide-right {
+    animation: slideR 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes slideL {
+    from {
+        opacity: 0;
+        transform: translateX(-24px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+@keyframes slideR {
+    from {
+        opacity: 0;
+        transform: translateX(24px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* ── RIGHT PANEL ── */
+.dw-right {
+    width: 100%;
+    background: var(--cream);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2.5rem 1.5rem;
+    position: relative;
+}
+
+/* subtle corner ornament */
+.dw-right::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 200px;
+    height: 200px;
+    background: radial-gradient(
+        circle at top right,
+        rgba(193, 123, 58, 0.08),
+        transparent 70%
+    );
+    pointer-events: none;
+}
+.dw-right::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 160px;
+    height: 160px;
+    background: radial-gradient(
+        circle at bottom left,
+        rgba(193, 123, 58, 0.06),
+        transparent 70%
+    );
+    pointer-events: none;
+}
+
+.dw-card {
+    width: 100%;
+    max-width: 400px;
+    position: relative;
+    z-index: 1;
+}
+
+/* Mobile logo */
+.dw-mobile-logo {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+.dw-mobile-logo .dw-logo-ring {
+    width: 80px;
+    height: 80px;
+    margin-bottom: 1rem;
+}
+.dw-mobile-logo .dw-logo-inner {
+    width: 62px;
+    height: 62px;
+    font-size: 1.2rem;
+}
+
+/* Form title */
+.dw-form-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.9rem;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin-bottom: 0.35rem;
+}
+.dw-form-desc {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 2rem;
+    font-weight: 300;
+}
+
+/* Accent line under title */
+.dw-title-line {
+    width: 36px;
+    height: 3px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, var(--brown-warm), var(--gold-bright));
+    margin-bottom: 1.75rem;
+}
+
+.dw-footer {
+    margin-top: 2rem;
+    text-align: center;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    opacity: 0.5;
+    letter-spacing: 1px;
+}
+
+/* ── FORM ELEMENTS ── */
+/* These override Shadcn defaults via global selectors scoped inside dw-root */
+.dw-root label {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 6px;
+    display: block;
+}
+
+.dw-root input:not([type='checkbox']) {
+    background: #fff;
+    border: 1.5px solid #e8d9c8;
+    border-radius: 10px;
+    padding: 11px 14px;
+    font-size: 0.9rem;
+    font-family: 'DM Sans', sans-serif;
+    color: var(--text-dark);
+    width: 100%;
+    transition:
+        border-color 0.25s,
+        box-shadow 0.25s;
+}
+
+.dw-root input:not([type='checkbox']):focus {
+    outline: none;
+    border-color: var(--brown-warm);
+    box-shadow: 0 0 0 3px rgba(193, 123, 58, 0.12);
+}
+
+.dw-root input::placeholder {
+    color: #c5ae97;
+    font-weight: 300;
+}
+
+/* Primary button */
+.dw-root button[type='submit'] {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 10px;
+    background: linear-gradient(
+        135deg,
+        var(--brown-mid) 0%,
+        var(--brown-warm) 60%,
+        var(--gold-bright) 100%
+    );
+    color: #fff;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition:
+        opacity 0.2s,
+        transform 0.2s,
+        box-shadow 0.2s;
+    box-shadow: 0 4px 20px rgba(139, 69, 19, 0.3);
+}
+
+.dw-root button[type='submit']:hover:not(:disabled) {
+    opacity: 0.92;
+    transform: translateY(-1px);
+    box-shadow: 0 8px 28px rgba(139, 69, 19, 0.4);
+}
+
+.dw-root button[type='submit']:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.dw-root button[type='submit']:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Links */
+.dw-root a {
+    color: var(--brown-warm);
+    font-weight: 500;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+.dw-root a:hover {
+    color: var(--gold-bright);
+}
+
+/* Checkbox */
+.dw-root input[type='checkbox'] {
+    accent-color: var(--brown-warm);
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
+}
