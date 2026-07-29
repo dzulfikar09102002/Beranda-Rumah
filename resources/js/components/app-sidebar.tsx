@@ -59,7 +59,7 @@ const mainNavItems = [
         icon: ScanBarcode,
         children: [
             {
-                title: 'Barang Keluar',
+                title: 'Kasir',
                 href: sellings.index().url,
                 icon: ScanBarcode,
             },

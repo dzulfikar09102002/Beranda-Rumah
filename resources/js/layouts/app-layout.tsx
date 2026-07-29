@@ -7,7 +7,7 @@ export default ({ children, breadcrumbs, ...props }: AppLayoutProps) => (
         <main className="flex-1 p-4 pb-12">{children}</main>
 
         <footer className="border-t py-4 text-center text-sm">
-            Copyright &copy; {new Date().getFullYear()} DWP Kota Surabaya. All
+            Copyright &copy; {new Date().getFullYear()} Beranda Rumah. All
             rights reserved
         </footer>
 
