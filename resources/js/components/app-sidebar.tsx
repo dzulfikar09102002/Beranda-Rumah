@@ -55,30 +55,30 @@ const mainNavItems = [
     },
 
     {
-        title: 'Transaksi',
+        title: 'Kasir',
         icon: ScanBarcode,
         children: [
             {
-                title: 'Kasir',
+                title: 'Kasir / POS',
                 href: sellings.index().url,
                 icon: ScanBarcode,
             },
             {
-                title: 'Barang Masuk',
-                href: purchases.index().url,
-                icon: ShoppingBasket,
+                title: 'Rekap / Closing',
+                href: salesSummary.index().url,
+                icon: Calculator,
             },
         ],
     },
-
+    
     {
         title: 'Monitoring',
         icon: BarChart3,
         children: [
             {
-                title: 'Rekapan',
-                href: salesSummary.index().url,
-                icon: Calculator,
+                title: 'Barang Masuk',
+                href: purchases.index().url,
+                icon: ShoppingBasket,
             },
             {
                 title: 'Stok',
@@ -94,11 +94,6 @@ const mainNavItems = [
                 title: 'Keuangan',
                 href: cashLedgers.index().url,
                 icon: NotebookPen,
-            },
-            {
-                title: 'Laba/Rugi',
-                href: '/reports/laba-rugi',
-                icon: BadgePoundSterling,
             },
         ],
     },

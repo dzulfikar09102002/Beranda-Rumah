@@ -149,17 +149,6 @@ export default function Modal({
                         </Field>
 
                         <Field>
-                            <FieldLabel>Brand</FieldLabel>
-                            <Input
-                                value={data.brand}
-                                onChange={(e) =>
-                                    setData('brand', e.target.value)
-                                }
-                            />
-                            <FieldError>{errors.brand}</FieldError>
-                        </Field>
-
-                        <Field>
                             <FieldLabel>Kategori</FieldLabel>
 
                             <Combobox
@@ -208,7 +197,7 @@ export default function Modal({
                             <FieldError>{errors.category_id}</FieldError>
                         </Field>
                         <Field>
-                            <FieldLabel>Harga Beli</FieldLabel>
+                            <FieldLabel>Harga Pokok Penjualan (HPP)</FieldLabel>
                             <Input
                                 type="number"
                                 value={data.purchase_price}

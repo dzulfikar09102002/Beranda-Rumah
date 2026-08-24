@@ -64,7 +64,6 @@ class ProductService
         return Product::create([
             'category_id'    => $data['category_id'],
             'name'           => $data['name'],
-            'brand'          => $data['brand'],
             'purchase_price' => $purchasePrice,
             'selling_price'  => $sellingPrice,
             'minimum_stock'  => $data['minimum_stock'],
@@ -83,7 +82,6 @@ class ProductService
         return $product->update([
             'category_id'    => $input['category_id'],
             'name'           => $input['name'],
-            'brand'          => $input['brand'],
             'minimum_stock'  => $input['minimum_stock'],
             'purchase_price' => $purchasePrice,
             'selling_price'  => $sellingPrice,

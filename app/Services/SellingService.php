@@ -424,8 +424,6 @@ class SellingService
 
                 $sourceMap = [
                     4 => 'damage',
-                    5 => 'expired',
-                    6 => 'other',
                 ];
 
                 $newSource = $sourceMap[$methodId] ?? 'other';

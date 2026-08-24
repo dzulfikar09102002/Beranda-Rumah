@@ -2,7 +2,7 @@ import { Head, router } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import {
     PaymentMethod,
@@ -44,10 +44,14 @@ export default function Payment({
     const [selectedPayment, setSelectedPayment] =
         useState<PaymentMethod | null>(null);
 
-    const purchasingOptions: Option[] = purchasingMethods.map((m) => ({
-        value: String(m.id),
-        label: m.name,
-    }));
+        const purchasingOptions: Option[] = useMemo(
+            () =>
+                purchasingMethods.map((m) => ({
+                    value: String(m.id),
+                    label: m.name,
+                })),
+            [purchasingMethods],
+        );
 
     // HAPUS DEFAULT
     const [selectedPurchasing, setSelectedPurchasing] = useState<Option | null>(
@@ -84,8 +88,8 @@ export default function Payment({
     const [reason, setReason] = useState('');
 
     const showReason = selectedPurchasing
-        ? Number(selectedPurchasing.value) > 2
-        : false;
+    ? Number(selectedPurchasing.value) === 4
+    : false;
 
     useEffect(() => {
         if (!isCash) {
@@ -329,8 +333,7 @@ export default function Payment({
                         </div>
                         <div className="space-y-4">
                             <h4 className="font-medium">
-                                Metode Pembelian{' '}
-                                <span className="text-red-500">*</span>
+                                Metode Pembelian <span className="text-red-500">*</span>
                             </h4>
                             <Combobox
                                 items={purchasingOptions}
@@ -342,15 +345,14 @@ export default function Payment({
                                 <ComboboxInput
                                     placeholder="Pilih Metode Pembelian"
                                     className="w-full"
+                                    value={selectedPurchasing ? selectedPurchasing.label : ''}
                                 />
 
                                 <ComboboxContent>
-                                    <ComboboxEmpty>
-                                        Tidak ditemukan
-                                    </ComboboxEmpty>
+                                    <ComboboxEmpty>Tidak ditemukan</ComboboxEmpty>
 
                                     <ComboboxList>
-                                        {(el) => (
+                                        {(el: Option) => (
                                             <ComboboxItem
                                                 key={el.value}
                                                 value={el}
@@ -367,6 +369,8 @@ export default function Payment({
                                 </p>
                             )}
                         </div>
+
+                        {/* Section Alasan */}
                         {showReason && (
                             <div className="space-y-1">
                                 <label className="text-sm font-medium">

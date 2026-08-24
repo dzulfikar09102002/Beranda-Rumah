@@ -144,7 +144,7 @@ export default function Modal({
                                     <SelectValue placeholder="Pilih jenis metode" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="Cas">Cash</SelectItem>
+                                    <SelectItem value="Cash">Cash</SelectItem>
                                     <SelectItem value="Debit">Debit</SelectItem>
                                     <SelectItem value="Credit Card">
                                         Credit Card

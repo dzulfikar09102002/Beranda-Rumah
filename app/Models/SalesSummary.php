@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class SalesSummary extends Model
@@ -23,7 +24,10 @@ class SalesSummary extends Model
         'total_sales' => 'decimal:2',
     ];
 
-    // 🔗 relasi
+    public function cashReconciliation(): HasOne
+    {
+        return $this->hasOne(CashReconciliation::class, 'sales_summary_id');
+    }
     public function details()
     {
         return $this->hasMany(SalesSummaryDetail::class);

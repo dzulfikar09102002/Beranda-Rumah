@@ -596,7 +596,7 @@ export default function Index({
                                             </ComboboxContent>
                                         </Combobox>
                                         <FieldLabel>
-                                            Harga Beli{' '}
+                                            HPP{' '}
                                             <span className="text-red-500">
                                                 *
                                             </span>
@@ -681,7 +681,7 @@ export default function Index({
                                             </ComboboxContent>
                                         </Combobox>
                                         <FieldLabel>
-                                            Tanggal Masuk{' '}
+                                            Tanggal Produksi{' '}
                                             <span className="text-red-500">
                                                 *
                                             </span>
