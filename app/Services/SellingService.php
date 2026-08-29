@@ -13,10 +13,10 @@ use App\Models\SaleTransactionDetail;
 use App\Models\Setting;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class SellingService
 {
-    public const string BRAND_INVOICE_CODE = 'BRAND_INVOICE_CODE';
     public const string BRAND_PHONE        = 'BRAND_PHONE';
     public const string BRAND_NAME         = 'BRAND_NAME';
     public const string BRAND_ADDRESS      = 'BRAND_ADDRESS';
@@ -117,7 +117,7 @@ class SellingService
             $items = $input['items'] ?? [];
             $user = auth()->user();
             $userId = $user?->id;
-            $cashierName = $user?->name;
+            $cashierName = $user?->nickname;
 
             $grandTotal = collect($items)->sum(function ($item) {
                 $subtotal = $item['quantity'] * $item['selling_price'];
@@ -138,6 +138,7 @@ class SellingService
                 'payment_status' => 'pending',
                 'grand_total' => $grandTotal,
                 'cashier' => $cashierName,
+                'customer' => !empty($input['customer']) ? Str::upper($input['customer']) : '-',
                 'payment_type' => 'cash',
                 'transaction_date' => $dateTime,
                 'created_by' => $userId,
@@ -149,7 +150,6 @@ class SellingService
                 $totalQty = (int) $item['quantity'];
                 $totalDiscount = (float) ($item['discount'] ?? 0);
 
-                // diskon per qty
                 $discountPerQty = $totalQty > 0
                     ? $totalDiscount / $totalQty
                     : 0;
@@ -183,14 +183,12 @@ class SellingService
 
                     $stockIn = $purchaseIn + $saleReturnIn;
 
-                    // pembatalan purchase
                     $purchaseOut = InventoryTransaction::query()
                         ->where('reference_table', 'purchase')
                         ->where('reference_id', $purchase->id)
                         ->where('type', 'out')
                         ->sum('quantity');
 
-                    // penjualan
                     $saleOut = InventoryTransaction::query()
                         ->leftJoin(
                             'sale_transaction_details as std',
@@ -257,16 +255,17 @@ class SellingService
     private function generateInvoiceNumber(?string $date = null): string
     {
         $date = $date ? Carbon::parse($date) : now();
-
-        $dateFormat = $date->format('Ymd');
+        $userName = auth()->user()?->name ?? 'SYS';
         
-        $brandCode = Setting::where('property', self::BRAND_INVOICE_CODE)->value('value') ?? 'BRNDRM';
-
-        $prefix = $dateFormat.'/'.$brandCode.'/';
-
+        $initials = Str::of($userName)
+            ->matchAll('/\b\p{L}/u') 
+            ->implode('');
+            
+        $initials = strtoupper($initials);
+        $prefix = $initials . '/';
         $last = SaleTransaction::withTrashed()
             ->whereDate('transaction_date', $date->toDateString())
-            ->where('invoice_number', 'like', $prefix.'%')
+            ->where('invoice_number', 'like', $prefix . '%')
             ->orderByDesc('id')
             ->value('invoice_number');
 
@@ -278,8 +277,7 @@ class SellingService
         }
 
         $sequence = str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
-
-        return $prefix.$sequence;
+        return $prefix . $sequence;
     }
 
     public function getTransactionDetails(int $id)
@@ -334,81 +332,76 @@ class SellingService
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            $wasPartialPayment = $sale->total_amount > 0;
-            $description = $wasPartialPayment
-                ? 'PELUNASAN PENJUALAN '.$sale->invoice_number
-                : 'PENJUALAN '.$sale->invoice_number;
-
-            $total_amount = $sale->total_amount + $input['paid_amount'];
+            $userId = auth()->id();
             $methodId = $input['purchase_method_id'];
             $isCancelMethod = $methodId > 2;
-            $isPaid = $total_amount >= $sale->grand_total;
-            $paymentType = $sale->payment_type;
-
-            if ($sale->payment_type === 'cash' && ! $isPaid) {
-                $paymentType = 'credit';
-            }
-
-            $sale->update([
-                'payment_method_id' => $input['payment_method_id'] ?? null,
-                'total_amount' => $total_amount,
-                'change' => $input['change_amount'],
-                'purchasing_method_id' => $methodId,
-                'payment_type' => $isCancelMethod ? null : $paymentType,
-                'payment_status' => $isCancelMethod
-                    ? 'canceled'
-                    : ($isPaid ? 'paid' : $sale->payment_status),
-                'updated_by' => auth()->id(),
-            ]);
 
             if ($isCancelMethod) {
-                $sale->update([
-                    'deleted_at' => now(),
-                    'deleted_by' => auth()->id(),
-                ]);
-
                 $sourceMap = [
                     4 => 'damage',
                 ];
-
                 $newSource = $sourceMap[$methodId] ?? 'other';
 
+                $sale->update([
+                    'purchasing_method_id' => $methodId,
+                    'payment_type'         => null,
+                    'payment_status'       => 'canceled',
+                    'deleted_at'           => now(),
+                    'deleted_by'           => $userId,
+                    'updated_by'           => $userId,
+                ]);
+
                 InventoryTransaction::where('source', 'sale')
-                    ->whereIn('reference_id', function ($q) use ($sale) {
-                        $q->select('id')
+                    ->whereIn('reference_id', function ($query) use ($sale) {
+                        $query->select('id')
                             ->from('sale_transaction_details')
                             ->where('sale_transaction_id', $sale->id);
                     })
-                    ->lockForUpdate()
-                    ->get()
-                    ->each(function ($inventory) use ($newSource, $input) {
-                        $inventory->update([
-                            'source' => $newSource,
-                            'note' => $input['reason'] ?? null,
-                            'updated_by' => auth()->id(),
-                        ]);
-                    });
+                    ->update([
+                        'source'     => $newSource,
+                        'note'       => $input['reason'] ?? null,
+                        'updated_by' => $userId,
+                        'updated_at' => now(),
+                    ]);
+
+                return $sale->fresh();
             }
 
-            if (! $isCancelMethod) {
-                $paymentMethod = PaymentMethod::find($input['payment_method_id']);
-                $cashFlowType = $paymentMethod && $paymentMethod->kind === 'Cash'
-                    ? 'cash'
-                    : 'bank';
+            $wasPartialPayment = $sale->total_amount > 0;
+            $description = $wasPartialPayment
+                ? 'PELUNASAN PENJUALAN ' . $sale->invoice_number
+                : 'PENJUALAN ' . $sale->invoice_number;
 
-                CashLedger::create([
-                    'transaction_date' => $sale->transaction_date,
-                    'type' => CashLedger::TYPE_IN,
-                    'category' => CashLedger::CATEGORY_OPERATING,
-                    'amount' => $input['paid_amount'] - $input['change_amount'],
-                    'description' => $description,
-                    'reference_table' => CashLedger::REF_SALE,
-                    'cash_flow_type' => $cashFlowType,
-                    'reference_id' => $sale->id,
-                    'created_by' => auth()->id(),
-                    'updated_by' => auth()->id(),
-                ]);
-            }
+            $totalAmount = $sale->total_amount + $input['paid_amount'];
+            $isPaid = $totalAmount >= $sale->grand_total;
+            $paymentType = ($sale->payment_type === 'cash' && ! $isPaid) ? 'credit' : $sale->payment_type;
+
+            $sale->update([
+                'payment_method_id'    => $input['payment_method_id'] ?? null,
+                'total_amount'         => $totalAmount,
+                'change'               => $input['change_amount'],
+                'purchasing_method_id' => $methodId,
+                'payment_type'         => $paymentType,
+                'payment_status'       => $isPaid ? 'paid' : $sale->payment_status,
+                'updated_by'           => $userId,
+            ]);
+
+            $paymentMethod = PaymentMethod::find($input['payment_method_id'] ?? null);
+            $cashFlowType = ($paymentMethod && $paymentMethod->kind === 'Cash') ? 'cash' : 'bank';
+            $netCashAmount = $input['paid_amount'] - $input['change_amount'];
+
+            CashLedger::create([
+                'transaction_date' => $sale->transaction_date,
+                'type'             => CashLedger::TYPE_IN,
+                'category'         => CashLedger::CATEGORY_OPERATING,
+                'amount'           => $netCashAmount,
+                'description'      => $description,
+                'reference_table'  => CashLedger::REF_SALE,
+                'cash_flow_type'   => $cashFlowType,
+                'reference_id'     => $sale->id,
+                'created_by'       => $userId,
+                'updated_by'       => $userId,
+            ]);
 
             return $sale->fresh();
         });
@@ -421,6 +414,9 @@ class SellingService
             'purchasingMethod',
             'details.purchase.product',
         ])->findOrFail($id);
+
+        $sale->invoice_number = $this->encryptSequence($sale->invoice_number);
+
         $groupedDetails = $this->getTransactionDetails($id);
         $settings = Setting::whereIn('property', [
             self::BRAND_PHONE,
@@ -439,5 +435,34 @@ class SellingService
             'invoice_note'     => $settings[self::INVOICE_NOTE] ?? 'Gratis es teh apabila tidak mendapatkan struk',
             'expired_day_span' => $settings[self::EXPIRED_DAY_SPAN] ?? null,
         ];
+    }
+
+    private function encryptSequence(string $invoiceNumber): string
+    {
+        $parts = explode('/', $invoiceNumber);
+
+        if (count($parts) < 2) {
+            return $invoiceNumber;
+        }
+
+        $prefix = $parts[0];
+        $sequence = $parts[1];
+
+        $map = [
+            '0' => 'Z',
+            '1' => 'A',
+            '2' => 'B',
+            '3' => 'C',
+            '4' => 'D',
+            '5' => 'E',
+            '6' => 'F',
+            '7' => 'G',
+            '8' => 'H',
+            '9' => 'I',
+        ];
+
+        $encryptedSequence = strtr($sequence, $map);
+
+        return $prefix . '/' . $encryptedSequence;
     }
 }

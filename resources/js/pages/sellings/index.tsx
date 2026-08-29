@@ -82,9 +82,11 @@ export default function Index({ pagination, categoryOptions }: Props) {
     const { data, setData, post, processing, errors } = useForm<{
         items: Item[];
         transaction_date: string | null;
+        customer: string;
     }>({
         items: [],
         transaction_date: getLocalDateString(),
+        customer: ''
     });
 
     const err = (key: string) => ((errors as any)[key] ? 'border-red-500' : '');
@@ -612,6 +614,18 @@ export default function Index({ pagination, categoryOptions }: Props) {
                     <div className="mx-auto mt-4 w-[95%] space-y-1 border-t pt-3 text-sm">
                         <div className="mb-3 grid grid-cols-[150px_1fr] items-center gap-3">
                             <FieldLabel>
+                                Customer <span className="text-red-500">*</span>
+                            </FieldLabel>
+                            <Input
+                                placeholder="Maks. 8 karakter"
+                                maxLength={8}
+                                value={data.customer}
+                                onChange={(e) => setData('customer', e.target.value)}
+                                className={err('customer')}
+                            />
+                        </div>
+                        <div className="mb-3 grid grid-cols-[150px_1fr] items-center gap-3">
+                            <FieldLabel>
                                 Tanggal Penjualan{' '}
                                 <span className="text-red-500">*</span>
                             </FieldLabel>
@@ -661,6 +675,7 @@ export default function Index({ pagination, categoryOptions }: Props) {
                             const payload = {
                                 transaction_date: finalDate,
                                 items: data.items,
+                                customer: data.customer || null,
                             };
 
                             setSubmitting(true);
@@ -670,6 +685,7 @@ export default function Index({ pagination, categoryOptions }: Props) {
                                     setData({
                                         items: [],
                                         transaction_date: null,
+                                        customer: ''
                                     });
 
                                     toast.success('Data berhasil disimpan');

@@ -18,6 +18,7 @@ class SaleTransaction extends Model
         'payment_type',
         'total_amount',
         'cashier',
+        'customer',
         'grand_total',
         'change',
         'transaction_date',

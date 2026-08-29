@@ -24,7 +24,7 @@ public function rules(): array
 {
     return [
         'transaction_date' => ['required', 'date'],
-
+        'customer'         => ['nullable', 'string', 'max:8'],
         'items' => ['required', 'array', 'min:1'],
 
         'items.*.purchase_id'   => ['required', 'integer', 'exists:purchases,id'],
