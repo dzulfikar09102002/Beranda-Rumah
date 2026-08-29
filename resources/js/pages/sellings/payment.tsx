@@ -44,16 +44,15 @@ export default function Payment({
     const [selectedPayment, setSelectedPayment] =
         useState<PaymentMethod | null>(null);
 
-        const purchasingOptions: Option[] = useMemo(
-            () =>
-                purchasingMethods.map((m) => ({
-                    value: String(m.id),
-                    label: m.name,
-                })),
-            [purchasingMethods],
-        );
+    const purchasingOptions: Option[] = useMemo(
+        () =>
+            purchasingMethods.map((m) => ({
+                value: String(m.id),
+                label: m.name,
+            })),
+        [purchasingMethods],
+    );
 
-    // HAPUS DEFAULT
     const [selectedPurchasing, setSelectedPurchasing] = useState<Option | null>(
         null,
     );
@@ -82,14 +81,12 @@ export default function Payment({
         }).format(value);
 
     const isCash = selectedPayment?.kind === 'cash';
-
     const change = cashAmount - remaining;
 
     const [reason, setReason] = useState('');
-
     const showReason = selectedPurchasing
-    ? Number(selectedPurchasing.value) === 4
-    : false;
+        ? Number(selectedPurchasing.value) === 4
+        : false;
 
     useEffect(() => {
         if (!isCash) {
@@ -102,6 +99,16 @@ export default function Payment({
 
     const [processing, setProcessing] = useState(false);
 
+    // Fungsi popup print struk thermal untuk Monolith Laravel
+    const onPrint = (id: string | number) => {
+        const printUrl = `/sellings/${id}/print`;
+        window.open(
+            printUrl,
+            'PRINT',
+            "height=400,width=600",
+        );
+    };
+
     return (
         <AppLayout>
             <Head title="Pembayaran" />
@@ -110,8 +117,8 @@ export default function Payment({
                 open={cashModalOpen}
                 onClose={() => setCashModalOpen(false)}
                 grandTotal={remaining}
-                onConfirm={(remaining) => {
-                    setCashAmount(remaining);
+                onConfirm={(val) => {
+                    setCashAmount(val);
                     setCashModalOpen(false);
                 }}
             />
@@ -149,16 +156,12 @@ export default function Payment({
                                     {adjustment > 0 && (
                                         <div className="mt-1 flex justify-between text-sm text-red-500">
                                             <span>Diskon</span>
-
-                                            <span>
-                                                -{formatIDR(adjustment)}
-                                            </span>
+                                            <span>-{formatIDR(adjustment)}</span>
                                         </div>
                                     )}
 
                                     <div className="mt-2 flex justify-between border-t pt-2 font-semibold">
                                         <span>Total</span>
-
                                         <span>{formatIDR(finalSubtotal)}</span>
                                     </div>
                                 </div>
@@ -168,7 +171,6 @@ export default function Payment({
                         <div className="mt-6 space-y-2 border-t pt-4">
                             <div className="flex justify-between text-base font-semibold">
                                 <span>Grand Total</span>
-
                                 <span>{formatIDR(grandTotal)}</span>
                             </div>
                         </div>
@@ -185,7 +187,6 @@ export default function Payment({
                         <div className="space-y-2 rounded-md bg-muted p-4">
                             <div className="flex justify-between text-sm">
                                 <span>Total Pesanan</span>
-
                                 <span className="font-semibold">
                                     {formatIDR(grandTotal)}
                                 </span>
@@ -195,7 +196,6 @@ export default function Payment({
                                 <>
                                     <div className="flex justify-between text-sm">
                                         <span>Sudah Dibayar</span>
-
                                         <span className="font-semibold text-green-600">
                                             {formatIDR(paidSoFar)}
                                         </span>
@@ -203,7 +203,6 @@ export default function Payment({
 
                                     <div className="flex justify-between text-sm">
                                         <span>Sisa Pembayaran</span>
-
                                         <span className="font-semibold text-red-500">
                                             {formatIDR(remaining)}
                                         </span>
@@ -216,7 +215,6 @@ export default function Payment({
                                     {showReason ? (
                                         <div className="flex justify-between text-sm">
                                             <span>Kerugian</span>
-
                                             <span className="font-semibold text-red-500">
                                                 {formatIDR(remaining)}
                                             </span>
@@ -225,7 +223,6 @@ export default function Payment({
                                         <>
                                             <div className="flex justify-between text-sm">
                                                 <span>Pembayaran</span>
-
                                                 <span className="font-semibold">
                                                     {formatIDR(
                                                         isCash
@@ -316,9 +313,7 @@ export default function Payment({
                                                         setSelectedPayment(
                                                             method,
                                                         );
-
                                                         setCashModalOpen(false);
-
                                                         setCashAmount(
                                                             grandTotal,
                                                         );
@@ -331,6 +326,8 @@ export default function Payment({
                                     </div>
                                 ))}
                         </div>
+
+                        {/* ================= PURCHASING METHOD ================= */}
                         <div className="space-y-4">
                             <h4 className="font-medium">
                                 Metode Pembelian <span className="text-red-500">*</span>
@@ -345,7 +342,11 @@ export default function Payment({
                                 <ComboboxInput
                                     placeholder="Pilih Metode Pembelian"
                                     className="w-full"
-                                    value={selectedPurchasing ? selectedPurchasing.label : ''}
+                                    value={
+                                        selectedPurchasing
+                                            ? selectedPurchasing.label
+                                            : ''
+                                    }
                                 />
 
                                 <ComboboxContent>
@@ -391,10 +392,12 @@ export default function Payment({
                                 )}
                             </div>
                         )}
+
                         <Button
                             className="w-full cursor-pointer"
                             disabled={
                                 processing ||
+                                (!selectedPurchasing) ||
                                 (showReason ? !reason : !selectedPayment)
                             }
                             onClick={() => {
@@ -436,15 +439,17 @@ export default function Payment({
                                         },
 
                                         onSuccess: () => {
-                                            toast.success('Berhasil!', {
+                                            toast.success('Pembayaran Berhasil!', {
                                                 id: 'pay',
                                             });
+
+                                            // Trigger popup cetak struk
+                                            onPrint(transaction.id);
                                         },
 
                                         onError: (err) => {
-                                            console.log(err);
-
-                                            toast.error('Gagal!', {
+                                            console.error(err);
+                                            toast.error('Gagal memproses pembayaran!', {
                                                 id: 'pay',
                                             });
                                         },

@@ -144,6 +144,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('sellings/{sale}/payment', [SellingController::class, 'payment'])->name('sellings.payment');
 
     Route::post('sellings/{sale}/payment', [SellingController::class, 'pay'])->name('sellings.pay');
+
+    Route::get('sellings/{id}/print', [SellingController::class, 'print'])->name('sellings.print');
+    
     Route::resource('/reports/laba-rugi', LabaRugiController::class)->names('reports.laba-rugi');
         Route::get('/laba-rugi/print', [LabaRugiController::class, 'printLabaRugi'])
         ->name('laba-rugi.print');

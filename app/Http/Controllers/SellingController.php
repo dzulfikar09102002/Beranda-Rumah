@@ -33,7 +33,7 @@ class SellingController extends Controller
 
     public function payment(int $id)
     {
-        $transaction = $this->service->getSaleTransaction($id);
+        $transaction = $this->service->getSaleTransactionUnpaid($id);
         $details = $this->service->getTransactionDetails($id);
         $paymentMethods = $this->service->getPaymentMethods();
         $purchasingMethods = $this->service->getPurchasingMethod();
@@ -44,6 +44,13 @@ class SellingController extends Controller
     {
         $this->service->pay($sale, $request->validated());
         return to_route('sellings.index')->with('success', 'Pembayaran berhasil dipulihkan');
+    }
+
+    public function print(int $id)
+    {
+        $data = $this->service->getPrintData($id);
+
+        return view('reports.receipt-pdf', $data);
     }
 
 }

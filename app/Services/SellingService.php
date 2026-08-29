@@ -10,11 +10,19 @@ use App\Models\Purchase;
 use App\Models\PurchasingMethod;
 use App\Models\SaleTransaction;
 use App\Models\SaleTransactionDetail;
+use App\Models\Setting;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class SellingService
 {
+    public const string BRAND_INVOICE_CODE = 'BRAND_INVOICE_CODE';
+    public const string BRAND_PHONE        = 'BRAND_PHONE';
+    public const string BRAND_NAME         = 'BRAND_NAME';
+    public const string BRAND_ADDRESS      = 'BRAND_ADDRESS';
+    public const string INVOICE_NOTE       = 'INVOICE_NOTE';
+    public const string EXPIRED_DAY_SPAN   = 'EXPIRED_DAY_SPAN';
+    
     public function getProducts()
     {
         $search = request('search', '');
@@ -22,17 +30,16 @@ class SellingService
 
         $stock = DB::table('inventory_transactions as it')
             ->selectRaw('
-        it.product_id,
-        it.selling_price,
-
-        SUM(
-            CASE
-                WHEN it.type = "in" THEN it.quantity
-                WHEN it.type = "out" THEN -it.quantity
-                ELSE 0
-            END
-        ) as total_quantity
-    ')
+                it.product_id,
+                it.selling_price,
+                SUM(
+                    CASE
+                        WHEN it.type = "in" THEN it.quantity
+                        WHEN it.type = "out" THEN -it.quantity
+                        ELSE 0
+                    END
+                ) as total_quantity
+            ')
             ->whereNull('it.deleted_at')
             ->groupBy(
                 'it.product_id',
@@ -40,66 +47,46 @@ class SellingService
             );
 
         $query = Purchase::query()
-
             ->with('product.category')
-
             ->when($search, function ($query) use ($search) {
-
                 $query->where(function ($q) use ($search) {
-
                     $q->where('purchases.code', 'like', "%{$search}%")
-
                         ->orWhereHas('product', function ($q2) use ($search) {
-
                             $q2->where('name', 'like', "%{$search}%")
                                 ->orWhere('brand', 'like', "%{$search}%");
                         });
                 });
             })
-
             ->when($category_id !== 'all', function ($query) use ($category_id) {
-
                 $query->whereHas('product', function ($q) use ($category_id) {
-
                     $q->where('category_id', $category_id);
                 });
             })
-
             ->leftJoinSub($stock, 'stock', function ($join) {
-
                 $join->on('stock.product_id', '=', 'purchases.product_id')
-
                     ->on('stock.selling_price', '=', 'purchases.selling_price');
             })
-
             ->selectRaw('
-            MAX(purchases.id) as id,
-
-            purchases.product_id,
-            purchases.selling_price,
-
-            MAX(purchases.code) as code,
-
-            COALESCE(MAX(stock.total_quantity), 0) as total_quantity,
-
-            MAX(purchases.purchase_price) as purchase_price,
-            MAX(purchases.expired_date) as expired_date,
-            MAX(purchases.purchase_date) as purchase_date,
-            MAX(purchases.updated_at) as updated_at
-        ')
-
+                MAX(purchases.id) as id,
+                purchases.product_id,
+                purchases.selling_price,
+                MAX(purchases.code) as code,
+                COALESCE(MAX(stock.total_quantity), 0) as total_quantity,
+                MAX(purchases.purchase_price) as purchase_price,
+                MAX(purchases.expired_date) as expired_date,
+                MAX(purchases.purchase_date) as purchase_date,
+                MAX(purchases.updated_at) as updated_at
+            ')
             ->groupBy(
                 'purchases.product_id',
                 'purchases.selling_price'
             )
-
             ->orderByRaw('
-            CASE
-                WHEN COALESCE(MAX(stock.total_quantity), 0) > 0 THEN 0
-                ELSE 1
-            END
-        ')
-
+                CASE
+                    WHEN COALESCE(MAX(stock.total_quantity), 0) > 0 THEN 0
+                    ELSE 1
+                END
+            ')
             ->orderByDesc('updated_at');
 
         return $query
@@ -127,12 +114,12 @@ class SellingService
     public function store(array $input)
     {
         return DB::transaction(function () use ($input) {
-
             $items = $input['items'] ?? [];
-            $user = auth()->id();
+            $user = auth()->user();
+            $userId = $user?->id;
+            $cashierName = $user?->name;
 
             $grandTotal = collect($items)->sum(function ($item) {
-
                 $subtotal = $item['quantity'] * $item['selling_price'];
                 $discount = $item['discount'] ?? 0;
 
@@ -150,18 +137,16 @@ class SellingService
                 'invoice_number' => $this->generateInvoiceNumber($dateInput),
                 'payment_status' => 'pending',
                 'grand_total' => $grandTotal,
+                'cashier' => $cashierName,
                 'payment_type' => 'cash',
                 'transaction_date' => $dateTime,
-                'created_by' => $user,
-                'updated_by' => $user,
+                'created_by' => $userId,
+                'updated_by' => $userId,
             ]);
 
             foreach ($items as $item) {
-
                 $remainingQty = (int) $item['quantity'];
-
                 $totalQty = (int) $item['quantity'];
-
                 $totalDiscount = (float) ($item['discount'] ?? 0);
 
                 // diskon per qty
@@ -170,74 +155,55 @@ class SellingService
                     : 0;
 
                 $purchases = Purchase::query()
-
                     ->where('product_id', $item['product_id'])
-
                     ->where('selling_price', $item['selling_price'])
-
                     ->whereNull('deleted_at')
-
                     ->orderBy('purchase_date', 'asc')
                     ->orderBy('id', 'asc')
-
                     ->get();
 
                 foreach ($purchases as $purchase) {
-
                     $purchaseIn = InventoryTransaction::query()
-
                         ->where('reference_table', 'purchase')
                         ->where('reference_id', $purchase->id)
                         ->where('type', 'in')
-
                         ->sum('quantity');
 
                     $saleReturnIn = InventoryTransaction::query()
-
                         ->leftJoin(
                             'sale_transaction_details as std',
                             'std.id',
                             '=',
                             'inventory_transactions.reference_id'
                         )
-
                         ->where('inventory_transactions.reference_table', 'sale')
                         ->where('inventory_transactions.type', 'in')
-
                         ->where('std.purchase_id', $purchase->id)
-
                         ->sum('inventory_transactions.quantity');
 
                     $stockIn = $purchaseIn + $saleReturnIn;
 
                     // pembatalan purchase
                     $purchaseOut = InventoryTransaction::query()
-
                         ->where('reference_table', 'purchase')
                         ->where('reference_id', $purchase->id)
                         ->where('type', 'out')
-
                         ->sum('quantity');
 
                     // penjualan
                     $saleOut = InventoryTransaction::query()
-
                         ->leftJoin(
                             'sale_transaction_details as std',
                             'std.id',
                             '=',
                             'inventory_transactions.reference_id'
                         )
-
                         ->where('inventory_transactions.reference_table', 'sale')
                         ->where('inventory_transactions.type', 'out')
-
                         ->where('std.purchase_id', $purchase->id)
-
                         ->sum('inventory_transactions.quantity');
 
                     $stockOut = $purchaseOut + $saleOut;
-
                     $availableStock = $stockIn - $stockOut;
 
                     if ($availableStock <= 0) {
@@ -245,55 +211,35 @@ class SellingService
                     }
 
                     $takenQty = min($remainingQty, $availableStock);
-
                     $subtotal = $takenQty * $item['selling_price'];
-
                     $discountAmount = $takenQty * $discountPerQty;
 
                     $detail = SaleTransactionDetail::create([
                         'sale_transaction_id' => $sale->id,
-
                         'purchase_id' => $purchase->id,
-
                         'code' => $purchase->code,
-
                         'quantity' => $takenQty,
-
                         'purchase_price' => $purchase->purchase_price,
-
                         'selling_price' => $item['selling_price'],
-
                         'subtotal' => $subtotal,
-
                         'adjustment' => $discountAmount,
-
-                        'created_by' => $user,
-                        'updated_by' => $user,
+                        'created_by' => $userId,
+                        'updated_by' => $userId,
                     ]);
 
                     InventoryTransaction::create([
                         'product_id' => $item['product_id'],
-
                         'purchase_id' => $purchase->id,
-
                         'type' => 'out',
-
                         'source' => 'sale',
-
                         'reference_id' => $detail->id,
-
                         'reference_table' => 'sale',
-
                         'quantity' => $takenQty,
-
                         'purchase_price' => $purchase->purchase_price,
-
                         'selling_price' => $item['selling_price'],
-
                         'note' => 'Penjualan barang FIFO',
-
-                        'created_by' => $user,
-                        'updated_by' => $user,
+                        'created_by' => $userId,
+                        'updated_by' => $userId,
                     ]);
 
                     $remainingQty -= $takenQty;
@@ -313,7 +259,10 @@ class SellingService
         $date = $date ? Carbon::parse($date) : now();
 
         $dateFormat = $date->format('Ymd');
-        $prefix = $dateFormat.'/DWPSBY/';
+        
+        $brandCode = Setting::where('property', self::BRAND_INVOICE_CODE)->value('value') ?? 'BRNDRM';
+
+        $prefix = $dateFormat.'/'.$brandCode.'/';
 
         $last = SaleTransaction::withTrashed()
             ->whereDate('transaction_date', $date->toDateString())
@@ -343,7 +292,6 @@ class SellingService
 
         return $data
             ->groupBy(function ($item) {
-
                 return implode('-', [
                     $item->purchase?->product?->id,
                     $item->purchase_price,
@@ -351,13 +299,9 @@ class SellingService
                 ]);
             })
             ->map(function ($items) {
-
                 $first = $items->first();
-
                 $first->quantity = $items->sum('quantity');
-
                 $first->subtotal = $items->sum('subtotal');
-
                 $first->adjustment = $items->sum('adjustment');
 
                 return $first;
@@ -365,7 +309,7 @@ class SellingService
             ->values();
     }
 
-    public function getSaleTransaction(int $id)
+    public function getSaleTransactionUnpaid(int $id)
     {
         return SaleTransaction::where('id', $id)
             ->where('payment_status', 'pending')
@@ -385,15 +329,16 @@ class SellingService
     public function pay(SaleTransaction $sale, array $input): SaleTransaction
     {
         return DB::transaction(function () use ($sale, $input) {
-
             $sale = SaleTransaction::whereKey($sale->id)
                 ->where('payment_status', 'pending')
                 ->lockForUpdate()
                 ->firstOrFail();
+
             $wasPartialPayment = $sale->total_amount > 0;
             $description = $wasPartialPayment
-            ? 'PELUNASAN PENJUALAN '.$sale->invoice_number
-            : 'PENJUALAN '.$sale->invoice_number;
+                ? 'PELUNASAN PENJUALAN '.$sale->invoice_number
+                : 'PENJUALAN '.$sale->invoice_number;
+
             $total_amount = $sale->total_amount + $input['paid_amount'];
             $methodId = $input['purchase_method_id'];
             $isCancelMethod = $methodId > 2;
@@ -403,6 +348,7 @@ class SellingService
             if ($sale->payment_type === 'cash' && ! $isPaid) {
                 $paymentType = 'credit';
             }
+
             $sale->update([
                 'payment_method_id' => $input['payment_method_id'] ?? null,
                 'total_amount' => $total_amount,
@@ -414,13 +360,12 @@ class SellingService
                     : ($isPaid ? 'paid' : $sale->payment_status),
                 'updated_by' => auth()->id(),
             ]);
+
             if ($isCancelMethod) {
                 $sale->update([
                     'deleted_at' => now(),
                     'deleted_by' => auth()->id(),
                 ]);
-            }
-            if ($isCancelMethod) {
 
                 $sourceMap = [
                     4 => 'damage',
@@ -450,6 +395,7 @@ class SellingService
                 $cashFlowType = $paymentMethod && $paymentMethod->kind === 'Cash'
                     ? 'cash'
                     : 'bank';
+
                 CashLedger::create([
                     'transaction_date' => $sale->transaction_date,
                     'type' => CashLedger::TYPE_IN,
@@ -466,5 +412,32 @@ class SellingService
 
             return $sale->fresh();
         });
+    }
+
+    public function getPrintData(int $id): array
+    {
+        $sale = SaleTransaction::with([
+            'paymentMethod',
+            'purchasingMethod',
+            'details.purchase.product',
+        ])->findOrFail($id);
+        $groupedDetails = $this->getTransactionDetails($id);
+        $settings = Setting::whereIn('property', [
+            self::BRAND_PHONE,
+            self::BRAND_NAME,
+            self::BRAND_ADDRESS,
+            self::INVOICE_NOTE,
+            self::EXPIRED_DAY_SPAN,
+        ])->pluck('value', 'property');
+
+        return [
+            'sale'             => $sale,
+            'details'          => $groupedDetails,
+            'brand_name'       => $settings[self::BRAND_NAME] ?? 'BERANDA RUMAH',
+            'brand_address'    => $settings[self::BRAND_ADDRESS] ?? null,
+            'brand_phone'      => $settings[self::BRAND_PHONE] ?? '-',
+            'invoice_note'     => $settings[self::INVOICE_NOTE] ?? 'Gratis es teh apabila tidak mendapatkan struk',
+            'expired_day_span' => $settings[self::EXPIRED_DAY_SPAN] ?? null,
+        ];
     }
 }

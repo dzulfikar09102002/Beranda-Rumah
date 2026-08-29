@@ -31,7 +31,7 @@ import { FieldLabel } from '@/components/ui/field';
 import { DatePicker } from '@/components/ui/date-picker';
 import NumberBoardDiscount from '@/components/number-board-discount';
 
-const title = 'Barang Keluar';
+const title = 'POS Kasir';
 
 type Option = {
     value: string;
@@ -69,6 +69,13 @@ type Props = {
     supplierOptions: Option[];
 };
 
+const getLocalDateString = (date = new Date()) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
 export default function Index({ pagination, categoryOptions }: Props) {
     const { data: products } = pagination;
 
@@ -77,8 +84,9 @@ export default function Index({ pagination, categoryOptions }: Props) {
         transaction_date: string | null;
     }>({
         items: [],
-        transaction_date: null,
+        transaction_date: getLocalDateString(),
     });
+
     const err = (key: string) => ((errors as any)[key] ? 'border-red-500' : '');
     const query = useQuery();
     const search = query.search || '';
@@ -642,9 +650,7 @@ export default function Index({ pagination, categoryOptions }: Props) {
                             }
 
                             const selectedDate = data.transaction_date;
-                            const today = new Date()
-                                .toISOString()
-                                .split('T')[0];
+                            const today = getLocalDateString();
 
                             let finalDate = selectedDate;
 
