@@ -66,9 +66,6 @@ class ProductService
             'name'           => $data['name'],
             'purchase_price' => $purchasePrice,
             'selling_price'  => $sellingPrice,
-            'minimum_stock'  => $data['minimum_stock'],
-            'has_expired' => $expiredDate ? true : false,
-            'expired_date'   => $expiredDate ?? null,
             'created_by'     => $user->id,
         ]);
     }
@@ -82,11 +79,8 @@ class ProductService
         return $product->update([
             'category_id'    => $input['category_id'],
             'name'           => $input['name'],
-            'minimum_stock'  => $input['minimum_stock'],
             'purchase_price' => $purchasePrice,
             'selling_price'  => $sellingPrice,
-            'has_expired' => $expiredDate ? true : false,
-            'expired_date'   => $expiredDate ?? null,
             'updated_by'   => auth()->user()->id,
         ]);
     }

@@ -59,7 +59,6 @@ type Item = {
     year: number;
 
     purchase_date: string;
-    expired_date: string | null;
     supplier_id: number | null;
     source: string;
 };
@@ -91,12 +90,14 @@ export default function Index({
         items: [],
         supplier_id: null,
     });
+
     const today = () => {
         const d = new Date();
         const month = String(d.getMonth() + 1).padStart(2, '0');
         const day = String(d.getDate()).padStart(2, '0');
         return `${d.getFullYear()}-${month}-${day}`;
     };
+
     const err = (key: string) => ((errors as any)[key] ? 'border-red-500' : '');
     const safeSupplierOptions = Array.isArray(supplierOptions)
         ? supplierOptions
@@ -105,12 +106,12 @@ export default function Index({
     const query = useQuery();
     const search = query.search || '';
     const product_category_id = query.product_category_id || 'all';
+
     const generateCode = async (index: number, item: Item) => {
         try {
             const res = await axios.post('/purchases/generate-code', {
                 product_id: item.product_id,
                 year: item.year,
-                expired_date: item.expired_date,
             });
 
             updateItem(index, 'code', res.data.code);
@@ -118,6 +119,7 @@ export default function Index({
             toast.error('Gagal generate kode');
         }
     };
+
     const [categoryValue, setCategoryValue] = useState(product_category_id);
 
     const safeCategoryOptions = Array.isArray(categoryOptions)
@@ -142,7 +144,6 @@ export default function Index({
         const year = new Date().getFullYear();
 
         setData('items', [
-            ...data.items,
             {
                 product_id: product.id,
                 name: product.name,
@@ -150,14 +151,12 @@ export default function Index({
                 purchase_price: Math.round(product.purchase_price),
                 selling_price: Math.round(product.selling_price),
                 purchase_date: '',
-                expired_date: product.expired_date
-                    ? new Date(product.expired_date).toISOString().split('T')[0]
-                    : null,
                 year,
                 code: '',
                 supplier_id: null,
-                source: '',
+                source: 'purchase',
             },
+            ...data.items,
         ]);
     };
 
@@ -204,6 +203,7 @@ export default function Index({
             },
         );
     };
+
     const {
         prev_page_url,
         next_page_url,
@@ -211,14 +211,13 @@ export default function Index({
         last_page,
         first_page_url,
     } = pagination;
+
     const sourceOptions: Option[] = [
-        { value: 'purchase', label: 'Pembelian' },
+        { value: 'purchase', label: 'Produksi' },
         { value: 'consignment', label: 'Titipan' },
-        { value: 'return', label: 'Pengembalian' },
-        { value: 'adjustment', label: 'Penyesuaian' },
-        { value: 'transfer', label: 'Transfer Masuk' },
         { value: 'other', label: 'Lainnya' },
     ];
+
     const inertiaOptions = {
         preserveScroll: true,
         preserveState: true,
@@ -230,6 +229,7 @@ export default function Index({
 
         router.get(first_page_url, { page }, inertiaOptions);
     };
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={title} />
@@ -268,7 +268,7 @@ export default function Index({
                                 >
                                     <ComboboxInput
                                         placeholder="Pilih Kategori"
-                                        className="w-full"
+                                        className="w-full cursor-pointer"
                                     />
                                     <input
                                         type="hidden"
@@ -288,6 +288,7 @@ export default function Index({
                                                 <ComboboxItem
                                                     key={el.value}
                                                     value={el}
+                                                    className="cursor-pointer"
                                                 >
                                                     {el.label}
                                                 </ComboboxItem>
@@ -372,6 +373,7 @@ export default function Index({
                                         <ComboboxList>
                                             {(page) => (
                                                 <ComboboxItem
+                                                    className="cursor-pointer"
                                                     key={page}
                                                     value={page}
                                                 >
@@ -405,7 +407,7 @@ export default function Index({
                 <Card className="flex h-full flex-col">
                     <CardHeader>
                         <h3 className="text-lg font-semibold">
-                            Form Pembelian & Barang Masuk
+                            Form Barang Masuk & Konsinyasi
                         </h3>
                     </CardHeader>
 
@@ -451,38 +453,14 @@ export default function Index({
                                             <Button
                                                 type="button"
                                                 variant="secondary"
-                                                onClick={async () => {
-                                                    try {
-                                                        const res =
-                                                            await axios.post(
-                                                                '/purchases/generate-code',
-                                                                {
-                                                                    product_id:
-                                                                        item.product_id,
-                                                                    year: item.year,
-                                                                    expired_date:
-                                                                        item.expired_date,
-                                                                },
-                                                            );
-
-                                                        const code =
-                                                            res.data.code;
-
-                                                        updateItem(
-                                                            index,
-                                                            'code',
-                                                            code,
-                                                        );
-                                                    } catch (err) {
-                                                        toast.error(
-                                                            'Gagal generate kode',
-                                                        );
-                                                    }
-                                                }}
+                                                onClick={() =>
+                                                    generateCode(index, item)
+                                                }
                                             >
                                                 Generate
                                             </Button>
                                         </div>
+
                                         <FieldLabel>
                                             Jumlah{' '}
                                             <span className="text-red-500">
@@ -535,6 +513,7 @@ export default function Index({
                                                 <Plus />
                                             </Button>
                                         </div>
+
                                         <FieldLabel>
                                             Tahun{' '}
                                             <span className="text-red-500">
@@ -555,8 +534,6 @@ export default function Index({
                                                     val?.value,
                                                 );
 
-                                                const shortYear =
-                                                    String(newYear).slice(-2);
                                                 const updated = data.items.map(
                                                     (x, i) =>
                                                         i === index
@@ -569,13 +546,11 @@ export default function Index({
                                                 );
 
                                                 setData('items', updated);
-
-                                                setData('items', updated);
                                             }}
                                         >
                                             <ComboboxInput
                                                 placeholder="Pilih Tahun"
-                                                className="w-full"
+                                                className="w-full cursor-pointer"
                                             />
 
                                             <ComboboxContent>
@@ -588,6 +563,7 @@ export default function Index({
                                                         <ComboboxItem
                                                             key={el.value}
                                                             value={el}
+                                                            className="cursor-pointer"
                                                         >
                                                             {el.label}
                                                         </ComboboxItem>
@@ -595,6 +571,7 @@ export default function Index({
                                                 </ComboboxList>
                                             </ComboboxContent>
                                         </Combobox>
+
                                         <FieldLabel>
                                             HPP{' '}
                                             <span className="text-red-500">
@@ -615,6 +592,7 @@ export default function Index({
                                                 )
                                             }
                                         />
+
                                         <FieldLabel>
                                             Harga Jual{' '}
                                             <span className="text-red-500">
@@ -635,13 +613,13 @@ export default function Index({
                                                 )
                                             }
                                         />
+
                                         <FieldLabel>
                                             Sumber{' '}
                                             <span className="text-red-500">
                                                 *
                                             </span>
                                         </FieldLabel>
-
                                         <Combobox
                                             items={sourceOptions}
                                             value={sourceOptions.find(
@@ -660,7 +638,7 @@ export default function Index({
                                         >
                                             <ComboboxInput
                                                 placeholder="Pilih Sumber"
-                                                className="w-full"
+                                                className="w-full cursor-pointer"
                                             />
 
                                             <ComboboxContent>
@@ -673,6 +651,7 @@ export default function Index({
                                                         <ComboboxItem
                                                             key={el.value}
                                                             value={el}
+                                                            className="cursor-pointer"
                                                         >
                                                             {el.label}
                                                         </ComboboxItem>
@@ -680,8 +659,9 @@ export default function Index({
                                                 </ComboboxList>
                                             </ComboboxContent>
                                         </Combobox>
+
                                         <FieldLabel>
-                                            Tanggal Produksi{' '}
+                                            Tanggal{' '}
                                             <span className="text-red-500">
                                                 *
                                             </span>
@@ -696,25 +676,7 @@ export default function Index({
                                                 )
                                             }
                                         />
-                                        <FieldLabel>Tanggal Expired</FieldLabel>
-                                        <DatePicker
-                                            value={item.expired_date}
-                                            onChange={(val) => {
-                                                const updated = data.items.map(
-                                                    (x, i) =>
-                                                        i === index
-                                                            ? {
-                                                                  ...x,
-                                                                  expired_date:
-                                                                      val,
-                                                                  code: '',
-                                                              }
-                                                            : x,
-                                                );
 
-                                                setData('items', updated);
-                                            }}
-                                        />
                                         <FieldLabel>
                                             Supplier{' '}
                                             {item.source === 'consignment' && (
@@ -723,7 +685,6 @@ export default function Index({
                                                 </span>
                                             )}
                                         </FieldLabel>
-
                                         <Combobox
                                             items={safeSupplierOptions}
                                             value={safeSupplierOptions.find(
@@ -762,6 +723,7 @@ export default function Index({
                                                         <ComboboxItem
                                                             key={el.value}
                                                             value={el}
+                                                            className="cursor-pointer"
                                                         >
                                                             {el.label}
                                                         </ComboboxItem>

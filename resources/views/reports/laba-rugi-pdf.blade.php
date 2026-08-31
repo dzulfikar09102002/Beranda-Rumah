@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="id">
-    @php
+@php
     $namaBulan = [
         1 => 'Januari',
         'Februari',
@@ -16,10 +16,12 @@
         'Desember'
     ];
 @endphp
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" href="/assets/images/logo-dharmawanita.png" type="image/png">
+    <link rel="icon" type="image/png" href="{{ asset('assets/images/logo-brand2.png') }}?v={{ time() }}">
+    <link rel="shortcut icon" href="{{ asset('assets/images/logo-brand2.png') }}?v={{ time() }}">
     <title>Laporan Laba Rugi</title>
     <style>
         * {
@@ -171,22 +173,21 @@
         }
     </style>
 </head>
-<body>
 
-    {{-- HEADER --}}
+<body>
     <div class="header">
         <div class="report-title">Laporan Laba Rugi</div>
         <div class="report-period">
             @if($type === 'month')
-                Periode: {{ $namaBulan[$bulan] }} {{ $tahun }}
+                Periode: {{ $namaBulan[(int) $bulan] ?? '' }} {{ $tahun }}
             @else
                 Periode: Tahun {{ $tahun }}
             @endif
         </div>
 
         <div class="report-period">
-              Dicetak pada: {{ now()->translatedFormat('d F Y') }}
-        </div>        
+            Dicetak pada: {{ now()->translatedFormat('d F Y') }}
+        </div>
     </div>
 
     {{-- PENDAPATAN --}}
@@ -203,7 +204,8 @@
             </tr>
             <tr style="font-weight: bold; background: #f9f9f9;">
                 <td>Total Pendapatan</td>
-                <td>Rp {{ number_format($data['total_pendapatan'] + $data['total_pendapatan_piutang'], 0, ',', '.') }}</td>
+                <td>Rp {{ number_format($data['total_pendapatan'] + $data['total_pendapatan_piutang'], 0, ',', '.') }}
+                </td>
             </tr>
         </table>
     </div>
@@ -213,7 +215,7 @@
         <div class="section-title">Pengeluaran</div>
         <table>
             <tr>
-                <td>Total Pembelian</td>
+                <td>Total Produksi</td>
                 <td>Rp {{ number_format($data['total_pembelian'], 0, ',', '.') }}</td>
             </tr>
 
@@ -226,9 +228,11 @@
                 <td>Total Pengeluaran</td>
                 <td>
                     Rp {{ number_format(
-                        $data['total_pembelian'] + $data['total_utang'],
-                        0, ',', '.'
-                    ) }}
+    $data['total_pembelian'] + $data['total_utang'],
+    0,
+    ',',
+    '.'
+) }}
                 </td>
             </tr>
         </table>
@@ -265,8 +269,9 @@
 
     {{-- FOOTER --}}
     <div class="footer">
-       
+
     </div>
 
 </body>
+
 </html>

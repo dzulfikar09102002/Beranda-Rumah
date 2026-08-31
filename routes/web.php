@@ -138,8 +138,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('/reports/stocks', StockReportController::class)
     ->names('reportsStocks');
 
-    Route::resource('/sellings', SellingController::class)
-    ->names('sellings');
+    Route::get('/sellings/products-data', [SellingController::class, 'getProducts'])
+        ->name('sellings.products.data');
+        
+    Route::resource('/sellings', SellingController::class)->names('sellings');
 
     Route::get('sellings/{sale}/payment', [SellingController::class, 'payment'])->name('sellings.payment');
 

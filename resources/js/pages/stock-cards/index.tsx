@@ -1,17 +1,10 @@
 import { Fragment, useEffect, useState } from 'react';
-
 import { Head, router } from '@inertiajs/react';
-
 import AppLayout from '@/layouts/app-layout';
-
 import type { BreadcrumbItem } from '@/types';
-
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-
 import { Input } from '@/components/ui/input';
-
 import { Button } from '@/components/ui/button';
-
 import {
     Table,
     TableBody,
@@ -20,15 +13,10 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-
 import { ChevronDown, ChevronRight, Search } from 'lucide-react';
-
 import { DateRangePicker } from '@/components/ui/date-range-picker';
-
 import { DateRange } from 'react-day-picker';
-
 import { Pagination, Product } from '@/lib/model';
-
 import TablePagination from '@/components/table-pagination';
 
 const title = 'Kartu Stok';
@@ -40,15 +28,40 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
+type InventoryTransaction = {
+    id: number;
+    created_at?: string;
+    type: 'in' | 'out' | string;
+    source?: string;
+    quantity: number;
+    stock_balance: number;
+    purchase_price?: number | string | null;
+    selling_price?: number | string | null;
+    purchase_reference?: {
+        code?: string;
+        supplier?: {
+            name?: string;
+        };
+    } | null;
+    sale_reference?: {
+        sale_transaction?: {
+            invoice_number?: string;
+        };
+    } | null;
+};
+
+type ProductWithTransactions = Product & {
+    inventory_transactions?: InventoryTransaction[];
+};
+
 type Props = {
-    pagination: Pagination<Product>;
+    pagination: Pagination<ProductWithTransactions>;
 };
 
 export default function Index({ pagination }: Props) {
     const { data } = pagination;
 
     const [dateRange, setDateRange] = useState<DateRange | undefined>();
-
     const [expanded, setExpanded] = useState<number[]>([]);
 
     const formatDate = (date: Date) => {
@@ -72,6 +85,7 @@ export default function Index({ pagination }: Props) {
             });
         }
     }, []);
+
     const allExpanded =
         data.length > 0 &&
         data.every((product) => expanded.includes(product.id));
@@ -83,6 +97,7 @@ export default function Index({ pagination }: Props) {
             setExpanded(data.map((product) => product.id));
         }
     };
+
     const toggleExpand = (productId: number) => {
         setExpanded((prev) =>
             prev.includes(productId)
@@ -96,9 +111,11 @@ export default function Index({ pagination }: Props) {
             style: 'currency',
             currency: 'IDR',
             minimumFractionDigits: 0,
+            maximumFractionDigits: 0,
         }).format(Number(value || 0));
+
     const sourceLabels: Record<string, string> = {
-        purchase: 'Pembelian',
+        purchase: 'Produksi',
         sale: 'Penjualan',
         adjustment: 'Penyesuaian',
         return: 'Retur',
@@ -108,6 +125,7 @@ export default function Index({ pagination }: Props) {
         expired: 'Kedaluwarsa',
         consignment: 'Titipan',
     };
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={title} />
@@ -124,15 +142,12 @@ export default function Index({ pagination }: Props) {
                                 '/stock-card',
                                 {
                                     search: formData.get('search'),
-
                                     start_date: dateRange?.from
                                         ? formatDate(dateRange.from)
                                         : '',
-
                                     end_date: dateRange?.to
                                         ? formatDate(dateRange.to)
                                         : '',
-
                                     page: 1,
                                 },
                                 {
@@ -150,7 +165,7 @@ export default function Index({ pagination }: Props) {
                                     'search',
                                 ) || ''
                             }
-                            placeholder="Cari..."
+                            placeholder="Cari produk..."
                             className="flex-1"
                         />
 
@@ -187,9 +202,7 @@ export default function Index({ pagination }: Props) {
                                         )}
                                     </Button>
                                 </TableHead>
-
                                 <TableHead>Produk</TableHead>
-
                                 <TableHead>Total Transaksi</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -197,32 +210,24 @@ export default function Index({ pagination }: Props) {
                         <TableBody>
                             {data.length > 0 ? (
                                 data.map((product) => {
-                                    const isExpanded = expanded.includes(
-                                        product.id,
-                                    );
+                                    const isExpanded = expanded.includes(product.id);
+                                    const transactions = product.inventory_transactions ?? [];
 
                                     return (
                                         <Fragment key={product.id}>
-                                            {/* PARENT ROW */}
                                             <TableRow
                                                 className={
                                                     isExpanded
                                                         ? 'cursor-pointer bg-blue-50 hover:bg-blue-100'
                                                         : 'cursor-pointer hover:bg-muted/40'
                                                 }
-                                                onClick={() =>
-                                                    toggleExpand(product.id)
-                                                }
+                                                onClick={() => toggleExpand(product.id)}
                                             >
                                                 <TableCell>
                                                     {isExpanded ? (
-                                                        <ChevronDown
-                                                            size={18}
-                                                        />
+                                                        <ChevronDown size={18} />
                                                     ) : (
-                                                        <ChevronRight
-                                                            size={18}
-                                                        />
+                                                        <ChevronRight size={18} />
                                                     )}
                                                 </TableCell>
 
@@ -231,7 +236,6 @@ export default function Index({ pagination }: Props) {
                                                         <span className="font-semibold">
                                                             {product.name}
                                                         </span>
-
                                                         <span className="text-xs text-muted-foreground">
                                                             {product.brand}
                                                         </span>
@@ -239,192 +243,95 @@ export default function Index({ pagination }: Props) {
                                                 </TableCell>
 
                                                 <TableCell>
-                                                    {
-                                                        product
-                                                            .inventory_transactions
-                                                            ?.length
-                                                    }{' '}
-                                                    Transaksi
+                                                    {transactions.length} Transaksi
                                                 </TableCell>
                                             </TableRow>
+
                                             {isExpanded && (
                                                 <TableRow>
-                                                    <TableCell
-                                                        colSpan={4}
-                                                        className="bg-muted/10 p-0"
-                                                    >
+                                                    <TableCell colSpan={3} className="bg-muted/10 p-0">
                                                         <Table>
                                                             <TableHeader>
                                                                 <TableRow>
-                                                                    <TableHead
-                                                                        style={{
-                                                                            width: 60,
-                                                                        }}
-                                                                    >
-                                                                        No
-                                                                    </TableHead>
-
-                                                                    <TableHead>
-                                                                        Tanggal
-                                                                    </TableHead>
-
-                                                                    <TableHead>
-                                                                        Tipe
-                                                                    </TableHead>
-
-                                                                    <TableHead>
-                                                                        Sumber
-                                                                    </TableHead>
-
-                                                                    <TableHead>
-                                                                        Qty
-                                                                    </TableHead>
-
-                                                                    <TableHead>
-                                                                        Saldo
-                                                                    </TableHead>
-
-                                                                    <TableHead>
-                                                                        Harga
-                                                                        Beli
-                                                                    </TableHead>
-
-                                                                    <TableHead>
-                                                                        Harga
-                                                                        Jual
-                                                                    </TableHead>
-
-                                                                    <TableHead>
-                                                                        Referensi
-                                                                    </TableHead>
+                                                                    <TableHead style={{ width: 50 }}>No</TableHead>
+                                                                    <TableHead>Tanggal</TableHead>
+                                                                    <TableHead>Tipe</TableHead>
+                                                                    <TableHead>Sumber</TableHead>
+                                                                    <TableHead>Qty</TableHead>
+                                                                    <TableHead>Saldo</TableHead>
+                                                                    <TableHead>Harga Beli</TableHead>
+                                                                    <TableHead>Harga Jual</TableHead>
+                                                                    <TableHead>Referensi</TableHead>
                                                                 </TableRow>
                                                             </TableHeader>
 
                                                             <TableBody>
-                                                                {product.inventory_transactions?.map(
-                                                                    (
-                                                                        item,
-                                                                        index,
-                                                                    ) => {
-                                                                        const purchase =
-                                                                            item.purchase_reference;
-
-                                                                        const sale =
-                                                                            item.sale_reference;
+                                                                {transactions.length > 0 ? (
+                                                                    transactions.map((item, index) => {
+                                                                        const purchase = item.purchase_reference;
+                                                                        const sale = item.sale_reference;
 
                                                                         return (
-                                                                            <TableRow
-                                                                                key={
-                                                                                    item.id
-                                                                                }
-                                                                            >
+                                                                            <TableRow key={item.id}>
+                                                                                <TableCell>{index + 1}</TableCell>
                                                                                 <TableCell>
-                                                                                    {index +
-                                                                                        1}
+                                                                                    {item.created_at
+                                                                                        ? new Date(item.created_at).toLocaleDateString('id-ID', {
+                                                                                              day: '2-digit',
+                                                                                              month: 'long',
+                                                                                              year: 'numeric',
+                                                                                              hour: '2-digit',
+                                                                                              minute: '2-digit',
+                                                                                          })
+                                                                                        : '-'}
                                                                                 </TableCell>
-                                                                                <TableCell>
-                                                                                    {new Date(
-                                                                                        item.created_at ||
-                                                                                            '',
-                                                                                    ).toLocaleDateString(
-                                                                                        'id-ID',
-                                                                                        {
-                                                                                            day: '2-digit',
-                                                                                            month: 'long',
-                                                                                            year: 'numeric',
-                                                                                            hour: '2-digit',
-                                                                                            minute: '2-digit',
-                                                                                        },
-                                                                                    )}
-                                                                                </TableCell>
-
                                                                                 <TableCell>
                                                                                     <span
                                                                                         className={
-                                                                                            item.type ===
-                                                                                            'in'
+                                                                                            item.type === 'in'
                                                                                                 ? 'font-semibold text-green-600'
                                                                                                 : 'font-semibold text-red-600'
                                                                                         }
                                                                                     >
-                                                                                        {item.type.toUpperCase()}
+                                                                                        {item.type?.toUpperCase() ?? '-'}
                                                                                     </span>
                                                                                 </TableCell>
-
                                                                                 <TableCell>
-                                                                                    {sourceLabels[
-                                                                                        item
-                                                                                            .source
-                                                                                    ] ??
-                                                                                        '-'}
+                                                                                    {item.source ? (sourceLabels[item.source] ?? item.source) : '-'}
                                                                                 </TableCell>
-
-                                                                                <TableCell>
-                                                                                    {
-                                                                                        item.quantity
-                                                                                    }
-                                                                                </TableCell>
-
-                                                                                <TableCell className="font-semibold">
-                                                                                    {
-                                                                                        item.stock_balance
-                                                                                    }
-                                                                                </TableCell>
-
-                                                                                <TableCell>
-                                                                                    {formatRupiah(
-                                                                                        item.purchase_price,
-                                                                                    )}
-                                                                                </TableCell>
-
-                                                                                <TableCell>
-                                                                                    {formatRupiah(
-                                                                                        item.selling_price,
-                                                                                    )}
-                                                                                </TableCell>
-
+                                                                                <TableCell>{item.quantity}</TableCell>
+                                                                                <TableCell className="font-semibold">{item.stock_balance}</TableCell>
+                                                                                <TableCell>{formatRupiah(item.purchase_price)}</TableCell>
+                                                                                <TableCell>{formatRupiah(item.selling_price)}</TableCell>
                                                                                 <TableCell>
                                                                                     {purchase && (
                                                                                         <div className="flex flex-col text-sm">
-                                                                                            <span>
-                                                                                                Purchase
-                                                                                            </span>
-
-                                                                                            <span className="text-muted-foreground">
-                                                                                                {
-                                                                                                    purchase.code
-                                                                                                }
-                                                                                            </span>
-
+                                                                                            <span>Purchase</span>
+                                                                                            <span className="text-muted-foreground">{purchase.code}</span>
                                                                                             <span className="text-xs text-muted-foreground">
-                                                                                                {
-                                                                                                    purchase
-                                                                                                        .supplier
-                                                                                                        ?.name
-                                                                                                }
+                                                                                                {purchase.supplier?.name}
                                                                                             </span>
                                                                                         </div>
                                                                                     )}
-
                                                                                     {sale && (
                                                                                         <div className="flex flex-col text-sm">
-                                                                                            <span>
-                                                                                                Sale
-                                                                                            </span>
-
+                                                                                            <span>Sale</span>
                                                                                             <span className="text-xs text-muted-foreground">
-                                                                                                {
-                                                                                                    sale
-                                                                                                        .sale_transaction
-                                                                                                        ?.invoice_number
-                                                                                                }
+                                                                                                {sale.sale_transaction?.invoice_number}
                                                                                             </span>
                                                                                         </div>
                                                                                     )}
+                                                                                    {!purchase && !sale && '-'}
                                                                                 </TableCell>
                                                                             </TableRow>
                                                                         );
-                                                                    },
+                                                                    })
+                                                                ) : (
+                                                                    <TableRow>
+                                                                        <TableCell colSpan={9} className="py-6 text-center text-sm text-muted-foreground">
+                                                                            Belum ada riwayat transaksi pada rentang tanggal ini
+                                                                        </TableCell>
+                                                                    </TableRow>
                                                                 )}
                                                             </TableBody>
                                                         </Table>
@@ -436,10 +343,7 @@ export default function Index({ pagination }: Props) {
                                 })
                             ) : (
                                 <TableRow>
-                                    <TableCell
-                                        colSpan={4}
-                                        className="h-24 text-center text-muted-foreground"
-                                    >
+                                    <TableCell colSpan={3} className="h-24 text-center text-muted-foreground">
                                         Tidak ada data kartu stok
                                     </TableCell>
                                 </TableRow>

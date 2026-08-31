@@ -9,15 +9,13 @@ import {
 } from '@/components/ui/dialog';
 
 import { Field, FieldError, FieldLabel, FieldSet } from '@/components/ui/field';
-
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
-import { SubmitEventHandler, useEffect } from 'react';
+import { SubmitEventHandler, useEffect, useRef } from 'react';
 import { useForm } from '@inertiajs/react';
 import { toast } from 'sonner';
 import products from '@/routes/products';
-import { DatePicker } from '../ui/date-picker';
 import {
     Combobox,
     ComboboxContent,
@@ -52,6 +50,9 @@ export default function Modal({
     onModalSuccess,
     onModalClose,
 }: Props) {
+    // Sesuai dengan elemen <form>
+    const dialogRef = useRef<HTMLFormElement | null>(null);
+
     const {
         processing,
         patch,
@@ -67,9 +68,6 @@ export default function Modal({
         category_id: '',
         purchase_price: '',
         selling_price: '',
-        has_expired: false,
-        expired_date: '',
-        minimum_stock: '',
     });
 
     const submit: SubmitEventHandler<HTMLFormElement> = (e) => {
@@ -97,17 +95,20 @@ export default function Modal({
 
     useEffect(() => {
         const existing = tableData.find((el) => el.id === modalState.dataId);
-
+    
         if (existing) {
             setData({
                 name: existing.name ?? '',
                 brand: existing.brand ?? '',
                 category_id: existing.category_id?.toString() ?? '',
-                purchase_price: existing.purchase_price ?? '',
-                selling_price: existing.selling_price ?? '',
-                has_expired: existing.has_expired ?? false,
-                expired_date: existing.expired_date ?? '',
-                minimum_stock: existing.minimum_stock ?? '',
+                purchase_price:
+                    existing.purchase_price !== null && existing.purchase_price !== undefined && existing.purchase_price !== ''
+                        ? String(Math.round(Number(existing.purchase_price)))
+                        : '',
+                selling_price:
+                    existing.selling_price !== null && existing.selling_price !== undefined && existing.selling_price !== ''
+                        ? String(Math.round(Number(existing.selling_price)))
+                        : '',
             });
         } else {
             reset();
@@ -123,10 +124,9 @@ export default function Modal({
                     onModalClose();
                 }
             }}
-            modal={false}
         >
             <DialogContent className="top-[10%] translate-y-0 p-6" asChild>
-                <form onSubmit={submit}>
+                <form ref={dialogRef} onSubmit={submit}>
                     <DialogCancel />
                     <DialogHeader className="mb-4">
                         <DialogTitle>
@@ -175,7 +175,7 @@ export default function Modal({
                                     }`}
                                 />
 
-                                <ComboboxContent>
+                                <ComboboxContent container={dialogRef}>
                                     <ComboboxEmpty>
                                         Tidak ditemukan
                                     </ComboboxEmpty>
@@ -183,7 +183,7 @@ export default function Modal({
                                     <ComboboxList>
                                         {(el) => (
                                             <ComboboxItem
-                                                className={'cursor-pointer'}
+                                                className="cursor-pointer"
                                                 key={el.value}
                                                 value={el}
                                             >
@@ -196,6 +196,7 @@ export default function Modal({
 
                             <FieldError>{errors.category_id}</FieldError>
                         </Field>
+
                         <Field>
                             <FieldLabel>Harga Pokok Penjualan (HPP)</FieldLabel>
                             <Input
@@ -217,32 +218,9 @@ export default function Modal({
                                 }
                             />
                         </Field>
-                        <Field>
-                            <FieldLabel>Minimum Stok</FieldLabel>
-                            <Input
-                                type="number"
-                                value={data.minimum_stock}
-                                onChange={(e) =>
-                                    setData('minimum_stock', e.target.value)
-                                }
-                            />
-                        </Field>
-
-                        <Field>
-                            <FieldLabel>
-                                Tanggal Expired (jika produk memiliki masa
-                                kadaluarsa)
-                            </FieldLabel>
-                            <DatePicker
-                                value={data.expired_date || null}
-                                onChange={(val) => {
-                                    setData('expired_date', val ?? '');
-                                }}
-                            />
-                        </Field>
                     </FieldSet>
 
-                    <DialogFooter className="mt-6">
+                    <DialogFooter className="mt-3">
                         <DialogClose asChild>
                             <Button variant="outline">Batal</Button>
                         </DialogClose>

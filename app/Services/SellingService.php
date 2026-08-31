@@ -23,11 +23,8 @@ class SellingService
     public const string INVOICE_NOTE       = 'INVOICE_NOTE';
     public const string EXPIRED_DAY_SPAN   = 'EXPIRED_DAY_SPAN';
     
-    public function getProducts()
+    public function getAllProducts()
     {
-        $search = request('search', '');
-        $category_id = request('product_category_id', 'all');
-
         $stock = DB::table('inventory_transactions as it')
             ->selectRaw('
                 it.product_id,
@@ -41,57 +38,38 @@ class SellingService
                 ) as total_quantity
             ')
             ->whereNull('it.deleted_at')
-            ->groupBy(
-                'it.product_id',
-                'it.selling_price'
-            );
+            ->groupBy('it.product_id', 'it.selling_price');
 
-        $query = Purchase::query()
-            ->with('product.category')
-            ->when($search, function ($query) use ($search) {
-                $query->where(function ($q) use ($search) {
-                    $q->where('purchases.code', 'like', "%{$search}%")
-                        ->orWhereHas('product', function ($q2) use ($search) {
-                            $q2->where('name', 'like', "%{$search}%")
-                                ->orWhere('brand', 'like', "%{$search}%");
-                        });
-                });
-            })
-            ->when($category_id !== 'all', function ($query) use ($category_id) {
-                $query->whereHas('product', function ($q) use ($category_id) {
-                    $q->where('category_id', $category_id);
-                });
-            })
+        return Purchase::query()
+            ->with([
+                'product' => function ($q) {
+                    $q->with('category');
+                }
+            ])
             ->leftJoinSub($stock, 'stock', function ($join) {
                 $join->on('stock.product_id', '=', 'purchases.product_id')
-                    ->on('stock.selling_price', '=', 'purchases.selling_price');
+                     ->on('stock.selling_price', '=', 'purchases.selling_price');
             })
-            ->selectRaw('
-                MAX(purchases.id) as id,
-                purchases.product_id,
-                purchases.selling_price,
-                MAX(purchases.code) as code,
-                COALESCE(MAX(stock.total_quantity), 0) as total_quantity,
-                MAX(purchases.purchase_price) as purchase_price,
-                MAX(purchases.expired_date) as expired_date,
-                MAX(purchases.purchase_date) as purchase_date,
-                MAX(purchases.updated_at) as updated_at
-            ')
-            ->groupBy(
+            ->select([
                 'purchases.product_id',
-                'purchases.selling_price'
-            )
+                'purchases.selling_price',
+                DB::raw('MAX(purchases.id) as id'),
+                DB::raw('MAX(purchases.code) as code'),
+                DB::raw('COALESCE(MAX(stock.total_quantity), 0) as total_quantity'),
+                DB::raw('MAX(purchases.purchase_price) as purchase_price'),
+                DB::raw('MAX(purchases.expired_date) as expired_date'),
+                DB::raw('MAX(purchases.purchase_date) as purchase_date'),
+                DB::raw('MAX(purchases.updated_at) as updated_at'),
+            ])
+            ->groupBy('purchases.product_id', 'purchases.selling_price')
             ->orderByRaw('
                 CASE
                     WHEN COALESCE(MAX(stock.total_quantity), 0) > 0 THEN 0
                     ELSE 1
                 END
             ')
-            ->orderByDesc('updated_at');
-
-        return $query
-            ->paginate(request('per_page', 20))
-            ->withQueryString();
+            ->orderByDesc(DB::raw('MAX(purchases.updated_at)'))
+            ->get();
     }
 
     public function getCategoryOptions()

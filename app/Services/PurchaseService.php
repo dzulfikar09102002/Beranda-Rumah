@@ -105,18 +105,9 @@ class PurchaseService
                     'payment_type'    => $payment_type,
                     'total_payment'   => $total_payment,
                     'status_payment'  => $status_payment,
-                    'expired_date'    => $item['expired_date'] ?? null,
                     'created_by'      => $user,
                     'updated_by'      => $user,
                 ]);
-                $product = Product::find($item['product_id']);
-
-                if (!empty($item['expired_date'])) {
-                    $product->update([
-                        'has_expired' => true,
-                        'expired_date' => $item['expired_date'],
-                    ]);
-                }
                 InventoryTransaction::create([
                     'product_id'      => $item['product_id'],
                     'type'            => 'in',
@@ -126,7 +117,7 @@ class PurchaseService
                     'quantity'        => $item['quantity'],
                     'purchase_price'  => $item['purchase_price'],
                     'selling_price'   => $item['selling_price'],
-                    'note'            => 'Pembelian barang',
+                    'note'            => 'Produksi barang',
                     'created_by'      => $user,
                     'updated_by'      => $user,
                 ]);
@@ -140,7 +131,7 @@ class PurchaseService
                     'type'             => CashLedger::TYPE_OUT,
                     'category'         => CashLedger::CATEGORY_OPERATING,
                     'amount'           => $total_payment,
-                    'description'      => 'PEMBELIAN ' . $purchase->product->name,
+                    'description'      => 'Produksi ' . $purchase->product->name,
                     'reference_table'  => CashLedger::REF_PURCHASE,
                     'reference_id'     => $purchase->id,
                     'cash_flow_type'   => 'bank',
@@ -155,37 +146,21 @@ class PurchaseService
         });
     }
     
-    public function generateCode(int $productId, int $year, ?string $expiredDate): string
+    public function generateCode(int $productId): string
     {
-        $product = Product::findOrFail($productId);
-        if (!$product->has_expired) {
-            $existing = Purchase::where('product_id', $productId)->first();
+        $datePrefix = now()->format('Ydm');
 
-            if ($existing) {
-                return $existing->code;
-            }
-        } else {
-            $existing = Purchase::where('product_id', $productId)
-                ->whereDate('expired_date', $expiredDate)
-                ->first();
-
-            if ($existing) {
-                return $existing->code;
-            }
-        }
-        $shortYear = substr($year, -2);
-        $base = $shortYear . str_pad($productId, 4, '0', STR_PAD_LEFT);
-
-        $lastCode = Purchase::where('product_id', $productId)
-            ->where('code', 'like', $base . '%')
+        $productPrefix = str_pad($productId, 4, '0', STR_PAD_LEFT);
+        $base = $datePrefix . $productPrefix;
+        $lastCode = Purchase::where('code', 'like', $base . '%')
             ->orderByDesc('code')
             ->value('code');
 
         if (!$lastCode) {
-            $sequence = '00001';
+            $sequence = '0001';
         } else {
-            $lastSequence = (int) substr($lastCode, -5);
-            $sequence = str_pad($lastSequence + 1, 5, '0', STR_PAD_LEFT);
+            $lastSequence = (int) substr($lastCode, -4);
+            $sequence = str_pad($lastSequence + 1, 4, '0', STR_PAD_LEFT);
         }
 
         return $base . $sequence;

@@ -10,7 +10,6 @@ import {
     ChevronRight,
     Minus,
     Plus,
-    Search,
     ShoppingCart,
 } from 'lucide-react';
 import {
@@ -21,15 +20,14 @@ import {
     ComboboxList,
     ComboboxItem,
 } from '@/components/ui/combobox';
-import { Pagination, Purchase } from '@/lib/model';
-import { useQuery } from '@/hooks/use-query';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import sellings from '@/routes/sellings';
 import { Spinner } from '@/components/ui/spinner';
 import { toast } from 'sonner';
 import { FieldLabel } from '@/components/ui/field';
 import { DatePicker } from '@/components/ui/date-picker';
 import NumberBoardDiscount from '@/components/number-board-discount';
+import axios from 'axios';
 
 const title = 'POS Kasir';
 
@@ -64,9 +62,8 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 type Props = {
-    pagination: Pagination<Purchase>;
     categoryOptions: Option[];
-    supplierOptions: Option[];
+    supplierOptions?: Option[];
 };
 
 const getLocalDateString = (date = new Date()) => {
@@ -76,29 +73,82 @@ const getLocalDateString = (date = new Date()) => {
     return `${year}-${month}-${day}`;
 };
 
-export default function Index({ pagination, categoryOptions }: Props) {
-    const { data: products } = pagination;
+const ITEMS_PER_PAGE = 20;
 
-    const { data, setData, post, processing, errors } = useForm<{
+export default function Index({ categoryOptions }: Props) {
+    const [allProducts, setAllProducts] = useState<any[]>([]);
+    const [loadingProducts, setLoadingProducts] = useState(true);
+
+    const [search, setSearch] = useState('');
+    const [categoryValue, setCategoryValue] = useState('all');
+    const [currentPage, setCurrentPage] = useState(1);
+
+    const { data, setData, errors } = useForm<{
         items: Item[];
         transaction_date: string | null;
         customer: string;
     }>({
         items: [],
         transaction_date: getLocalDateString(),
-        customer: ''
+        customer: '',
     });
 
     const err = (key: string) => ((errors as any)[key] ? 'border-red-500' : '');
-    const query = useQuery();
-    const search = query.search || '';
-    const product_category_id = query.product_category_id || 'all';
-
-    const [categoryValue, setCategoryValue] = useState(product_category_id);
 
     const safeCategoryOptions = Array.isArray(categoryOptions)
         ? categoryOptions
         : [];
+
+    useEffect(() => {
+        setLoadingProducts(true);
+        axios
+            .get('/sellings/products-data')
+            .then((res) => {
+                setAllProducts(res.data);
+            })
+            .catch(() => {
+                toast.error('Gagal memuat data produk');
+            })
+            .finally(() => {
+                setLoadingProducts(false);
+            });
+    }, []);
+
+    // Filter Realtime Berdasarkan Search Input & Kategori Dropdown
+    const filteredProducts = useMemo(() => {
+        const query = search.trim().toLowerCase();
+
+        return allProducts.filter((purchase) => {
+            const product = purchase.product;
+
+            const matchesSearch =
+                query === '' ||
+                purchase.code?.toLowerCase().includes(query) ||
+                product?.name?.toLowerCase().includes(query) ||
+                product?.brand?.toLowerCase().includes(query);
+
+            const matchesCategory =
+                categoryValue === 'all' ||
+                String(product?.category_id) === String(categoryValue);
+
+            return matchesSearch && matchesCategory;
+        });
+    }, [allProducts, search, categoryValue]);
+
+    // Reset pagination ke halaman 1 setiap pencarian atau kategori berubah
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [search, categoryValue]);
+
+    const totalPages = Math.max(
+        1,
+        Math.ceil(filteredProducts.length / ITEMS_PER_PAGE),
+    );
+
+    const paginatedProducts = useMemo(() => {
+        const start = (currentPage - 1) * ITEMS_PER_PAGE;
+        return filteredProducts.slice(start, start + ITEMS_PER_PAGE);
+    }, [filteredProducts, currentPage]);
 
     const addItem = (purchase: any) => {
         const product = purchase.product;
@@ -127,16 +177,12 @@ export default function Index({ pagination, categoryOptions }: Props) {
             {
                 purchase_id: purchase.id,
                 product_id: product.id,
-
                 name: product.name,
                 quantity: 1,
-
                 purchase_price: Math.round(purchase.purchase_price),
                 selling_price: Math.round(purchase.selling_price),
-
                 purchase_date: purchase.purchase_date,
                 expired_date: purchase.expired_date,
-
                 year,
                 code: purchase.code,
                 source: 'purchase',
@@ -160,80 +206,33 @@ export default function Index({ pagination, categoryOptions }: Props) {
             data.items.filter((_, i) => i !== index),
         );
     };
+
     const totalBarang = data.items.reduce(
         (sum, item) => sum + item.quantity,
         0,
     );
+
     const getItemSubtotal = (item: Item) => {
         const gross = item.quantity * item.selling_price;
         return gross - (item.discount || 0);
     };
 
-    const totalDiscount = data.items.reduce(
-        (sum, item) => sum + (item.discount || 0),
-        0,
-    );
     const subtotal = data.items.reduce(
         (sum, item) => sum + getItemSubtotal(item),
         0,
     );
 
-    const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-
-        const formData = new FormData(e.currentTarget);
-
-        router.get(
-            sellings.index().url,
-            {
-                search: formData.get('search'),
-                product_category_id:
-                    categoryValue === 'all' ? '' : categoryValue,
-                page: 1,
-            },
-            {
-                preserveState: true,
-                replace: true,
-                only: ['pagination'],
-            },
-        );
-    };
-    const {
-        prev_page_url,
-        next_page_url,
-        current_page,
-        last_page,
-        first_page_url,
-    } = pagination;
-
-    const inertiaOptions = {
-        preserveScroll: true,
-        preserveState: true,
-        only: ['pagination'],
-    };
-    const [searchValue, setSearchValue] = useState(search);
-    const handlePageChange = (page: string | null) => {
-        if (!page) return;
-
-        router.get(first_page_url, { page }, inertiaOptions);
-    };
     const [submitting, setSubmitting] = useState(false);
     const [discountModalOpen, setDiscountModalOpen] = useState(false);
     const [selectedDiscountIndex, setSelectedDiscountIndex] = useState<
         number | null
     >(null);
+
     const openDiscountModal = (index: number) => {
         setSelectedDiscountIndex(index);
         setDiscountModalOpen(true);
     };
 
-    const applyDiscount = (amount: number) => {
-        if (selectedDiscountIndex === null) return;
-
-        updateItem(selectedDiscountIndex, 'discount', amount);
-
-        setDiscountModalOpen(false);
-    };
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={title} />
@@ -244,46 +243,28 @@ export default function Index({ pagination, categoryOptions }: Props) {
                         <div className="grid gap-2 lg:grid-cols-[30%_70%]">
                             <Combobox
                                 items={safeCategoryOptions}
-                                value={safeCategoryOptions.find(
-                                    (el) => el.value == categoryValue,
-                                )}
+                                value={
+                                    safeCategoryOptions.find(
+                                        (el) => el.value == categoryValue,
+                                    ) ?? null
+                                }
                                 onValueChange={(val: Option | null) => {
-                                    const newValue = val?.value ?? 'all';
-
-                                    setCategoryValue(newValue);
-
-                                    router.get(
-                                        sellings.index().url,
-                                        {
-                                            search,
-                                            product_category_id:
-                                                newValue === 'all'
-                                                    ? ''
-                                                    : newValue,
-                                            page: 1,
-                                        },
-                                        {
-                                            preserveState: true,
-                                            replace: true,
-                                            only: ['pagination'],
-                                        },
-                                    );
+                                    setCategoryValue(val?.value ?? 'all');
                                 }}
                             >
                                 <ComboboxInput
                                     placeholder="Pilih Kategori"
-                                    className="w-full"
+                                    className="w-full cursor-pointer"
                                 />
 
                                 <ComboboxContent>
-                                    <ComboboxEmpty>
-                                        Tidak ditemukan
-                                    </ComboboxEmpty>
+                                    <ComboboxEmpty>Tidak ditemukan</ComboboxEmpty>
                                     <ComboboxList>
                                         {(el) => (
                                             <ComboboxItem
                                                 key={el.value}
                                                 value={el}
+                                                className="cursor-pointer"
                                             >
                                                 {el.label}
                                             </ComboboxItem>
@@ -291,100 +272,109 @@ export default function Index({ pagination, categoryOptions }: Props) {
                                     </ComboboxList>
                                 </ComboboxContent>
                             </Combobox>
-                            <form onSubmit={handleSearch} className="w-full">
+
+                            <div className="w-full">
                                 <Input
                                     name="search"
-                                    defaultValue={search}
-                                    placeholder="Cari produk..."
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                    placeholder="Cari..."
                                 />
-                            </form>
+                            </div>
                         </div>
                     </CardHeader>
 
                     <CardContent className="flex-1">
-                        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
-                            {products.length === 0 ? (
-                                <div className="col-span-full flex items-center justify-center py-10 text-sm text-muted-foreground">
-                                    Tidak ada data produk
-                                </div>
-                            ) : (
-                                products.map((purchase) => {
-                                    const product = purchase.product;
-                                    const exist = data.items.find(
-                                        (x) => x.purchase_id === purchase.id,
-                                    );
+                        {loadingProducts ? (
+                            <div className="col-span-full flex items-center justify-center py-20 text-sm text-muted-foreground">
+                                <Spinner className="mr-2" /> Memuat produk...
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
+                                {paginatedProducts.length === 0 ? (
+                                    <div className="col-span-full flex items-center justify-center py-10 text-sm text-muted-foreground">
+                                        Tidak ada data produk yang cocok
+                                    </div>
+                                ) : (
+                                    paginatedProducts.map((purchase) => {
+                                        const product = purchase.product;
+                                        const exist = data.items.find(
+                                            (x) => x.purchase_id === purchase.id,
+                                        );
 
-                                    const isMax =
-                                        exist &&
-                                        exist.quantity >=
-                                            purchase.total_quantity;
+                                        const isMax =
+                                            exist &&
+                                            exist.quantity >=
+                                                purchase.total_quantity;
 
-                                    return (
-                                        <Card
-                                            key={purchase.id}
-                                            className={`relative transition hover:shadow-md ${
-                                                purchase.total_quantity <= 0 ||
-                                                isMax
-                                                    ? 'cursor-not-allowed opacity-50'
-                                                    : 'cursor-pointer'
-                                            }`}
-                                            onClick={() => {
-                                                if (
-                                                    purchase.total_quantity >
-                                                        0 &&
-                                                    !isMax
-                                                ) {
-                                                    addItem(purchase);
-                                                }
-                                            }}
-                                        >
-                                            <CardContent className="pl-4">
-                                                <div className="absolute top-1 right-2">
-                                                    <span
-                                                        className={`rounded px-2 py-0.5 text-[11px] font-medium text-white ${
-                                                            purchase.total_quantity >
-                                                            0
-                                                                ? 'bg-green-500'
-                                                                : 'bg-red-500'
-                                                        }`}
-                                                    >
-                                                        Stok :{' '}
-                                                        {
-                                                            purchase.total_quantity
-                                                        }
-                                                    </span>
-                                                </div>
+                                        return (
+                                            <Card
+                                                key={purchase.id}
+                                                className={`relative transition hover:shadow-md ${
+                                                    purchase.total_quantity <= 0 ||
+                                                    isMax
+                                                        ? 'cursor-not-allowed opacity-50'
+                                                        : 'cursor-pointer'
+                                                }`}
+                                                onClick={() => {
+                                                    if (
+                                                        purchase.total_quantity >
+                                                            0 &&
+                                                        !isMax
+                                                    ) {
+                                                        addItem(purchase);
+                                                    }
+                                                }}
+                                            >
+                                                <CardContent className="pl-4">
+                                                    <div className="absolute top-1 right-2">
+                                                        <span
+                                                            className={`rounded px-2 py-0.5 text-[11px] font-medium text-white ${
+                                                                purchase.total_quantity >
+                                                                0
+                                                                    ? 'bg-green-500'
+                                                                    : 'bg-red-500'
+                                                            }`}
+                                                        >
+                                                            Stok :{' '}
+                                                            {
+                                                                purchase.total_quantity
+                                                            }
+                                                        </span>
+                                                    </div>
 
-                                                <div className="mt-2 text-sm font-semibold">
-                                                    {product?.name}
-                                                </div>
+                                                    <div className="mt-2 text-sm font-semibold">
+                                                        {product?.name}
+                                                    </div>
 
-                                                <div className="text-xs text-muted-foreground">
-                                                    {product?.brand}
-                                                </div>
+                                                    <div className="text-xs text-muted-foreground">
+                                                        {product?.brand}
+                                                    </div>
 
-                                                <div className="text-md mt-4 font-semibold">
-                                                    {new Intl.NumberFormat(
-                                                        'id-ID',
-                                                        {
-                                                            style: 'currency',
-                                                            currency: 'IDR',
-                                                            minimumFractionDigits: 0,
-                                                            maximumFractionDigits: 0,
-                                                        },
-                                                    ).format(
-                                                        Number(
-                                                            purchase?.selling_price ??
-                                                                0,
-                                                        ),
-                                                    )}
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                    );
-                                })
-                            )}
-                        </div>
+                                                    <div className="text-md mt-4 font-semibold">
+                                                        {new Intl.NumberFormat(
+                                                            'id-ID',
+                                                            {
+                                                                style: 'currency',
+                                                                currency: 'IDR',
+                                                                minimumFractionDigits: 0,
+                                                                maximumFractionDigits: 0,
+                                                            },
+                                                        ).format(
+                                                            Number(
+                                                                purchase?.selling_price ??
+                                                                    0,
+                                                            ),
+                                                        )}
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
+                                        );
+                                    })
+                                )}
+                            </div>
+                        )}
+
                         <div className="mt-4">
                             <div className="flex items-center gap-2 text-sm">
                                 <div>Halaman</div>
@@ -392,13 +382,10 @@ export default function Index({ pagination, categoryOptions }: Props) {
                                 <Button
                                     size="icon"
                                     variant="outline"
-                                    disabled={!prev_page_url}
+                                    disabled={currentPage <= 1}
                                     onClick={() =>
-                                        prev_page_url &&
-                                        router.get(
-                                            prev_page_url,
-                                            {},
-                                            inertiaOptions,
+                                        setCurrentPage((prev) =>
+                                            Math.max(1, prev - 1),
                                         )
                                     }
                                 >
@@ -407,13 +394,18 @@ export default function Index({ pagination, categoryOptions }: Props) {
 
                                 <Combobox
                                     items={Array.from(
-                                        { length: last_page },
+                                        { length: totalPages },
                                         (_, i) => (i + 1).toString(),
                                     )}
-                                    value={String(current_page)}
-                                    onValueChange={handlePageChange}
+                                    value={String(currentPage)}
+                                    onValueChange={(page: string | null) => {
+                                        if (page) setCurrentPage(Number(page));
+                                    }}
                                 >
-                                    <ComboboxInput placeholder="Pilih Halaman" />
+                                    <ComboboxInput
+                                        placeholder="Pilih Halaman"
+                                        className="cursor-pointer"
+                                    />
 
                                     <ComboboxContent>
                                         <ComboboxEmpty>
@@ -424,6 +416,7 @@ export default function Index({ pagination, categoryOptions }: Props) {
                                                 <ComboboxItem
                                                     key={page}
                                                     value={page}
+                                                    className="cursor-pointer"
                                                 >
                                                     {page}
                                                 </ComboboxItem>
@@ -435,13 +428,10 @@ export default function Index({ pagination, categoryOptions }: Props) {
                                 <Button
                                     size="icon"
                                     variant="outline"
-                                    disabled={!next_page_url}
+                                    disabled={currentPage >= totalPages}
                                     onClick={() =>
-                                        next_page_url &&
-                                        router.get(
-                                            next_page_url,
-                                            {},
-                                            inertiaOptions,
+                                        setCurrentPage((prev) =>
+                                            Math.min(totalPages, prev + 1),
                                         )
                                     }
                                 >
@@ -614,13 +604,16 @@ export default function Index({ pagination, categoryOptions }: Props) {
                     <div className="mx-auto mt-4 w-[95%] space-y-1 border-t pt-3 text-sm">
                         <div className="mb-3 grid grid-cols-[150px_1fr] items-center gap-3">
                             <FieldLabel>
-                                Customer <span className="text-red-500">*</span>
+                                Customer{' '}
+                                <span className="text-red-500">*</span>
                             </FieldLabel>
                             <Input
                                 placeholder="Maks. 8 karakter"
                                 maxLength={8}
                                 value={data.customer}
-                                onChange={(e) => setData('customer', e.target.value)}
+                                onChange={(e) =>
+                                    setData('customer', e.target.value)
+                                }
                                 className={err('customer')}
                             />
                         </div>
@@ -685,7 +678,7 @@ export default function Index({ pagination, categoryOptions }: Props) {
                                     setData({
                                         items: [],
                                         transaction_date: null,
-                                        customer: ''
+                                        customer: '',
                                     });
 
                                     toast.success('Data berhasil disimpan');

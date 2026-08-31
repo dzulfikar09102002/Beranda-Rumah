@@ -1,20 +1,25 @@
 import { Head, router } from '@inertiajs/react';
-import { useState } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 import salesReport from '@/routes/reports/sales';
 import Swal from 'sweetalert2';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import {
-    AlertDialog,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+    ArrowLeft,
+    Ban,
+    CalendarDays,
+    CreditCard,
+    Printer,
+    Receipt,
+    ShoppingBag,
+    TrendingDown,
+    TrendingUp,
+    User,
+    Wallet,
+} from 'lucide-react';
 
 import {
     createColumnHelper,
@@ -25,9 +30,7 @@ import {
 
 import DataTable from '@/components/data-table';
 import TablePagination from '@/components/table-pagination';
-import { Pagination, SaleTransactionDetail } from '@/lib/model';
-import { Spinner } from '@/components/ui/spinner';
-import { AlertTriangle } from 'lucide-react';
+import { Pagination, SaleTransaction, SaleTransactionDetail } from '@/lib/model';
 
 const title = 'Detail Laporan Penjualan';
 
@@ -38,7 +41,6 @@ const formatDate = (date: string) =>
         year: 'numeric',
     });
 
-// ✅ GLOBAL FORMAT RUPIAH
 const formatRupiah = (value: number | string | null | undefined) =>
     new Intl.NumberFormat('id-ID', {
         style: 'currency',
@@ -51,7 +53,7 @@ const columnHelper = createColumnHelper<SaleTransactionDetail>();
 
 type Props = {
     pagination: Pagination<SaleTransactionDetail>;
-    transaction: any;
+    transaction: SaleTransaction;
 };
 
 export default function Index({ pagination, transaction }: Props) {
@@ -66,8 +68,9 @@ export default function Index({ pagination, transaction }: Props) {
         },
     ];
 
-    const [confirmOpen, setConfirmOpen] = useState(false);
-    const [processing, setProcessing] = useState(false);
+    const handlePrint = () => {
+        window.open(`/sellings/${transaction.id}/print`, '_blank');
+    };
 
     const handleCancel = () => {
         Swal.fire({
@@ -95,7 +98,7 @@ export default function Index({ pagination, transaction }: Props) {
                 return new Promise((resolve, reject) => {
                     router.post(
                         salesReport.cancel(transaction.id).url,
-                        { reason }, // ✅ kirim ke BE
+                        { reason },
                         {
                             onSuccess: () => resolve(true),
                             onError: () => {
@@ -133,9 +136,10 @@ export default function Index({ pagination, transaction }: Props) {
 
         return acc + (subtotal - discount);
     }, 0);
+
     const totalCost = (data ?? []).reduce((acc, item) => {
         const qty = item.quantity || 0;
-        const cost = item.purchase_price || 0; // sesuaikan kalau beda field
+        const cost = item.purchase_price || 0;
 
         return acc + qty * cost;
     }, 0);
@@ -145,6 +149,12 @@ export default function Index({ pagination, transaction }: Props) {
     const totalDiscount = (data ?? []).reduce((acc, item) => {
         return acc + Number(item.adjustment || 0);
     }, 0);
+
+    const totalQty = (data ?? []).reduce(
+        (acc, item) => acc + Number(item.quantity || 0),
+        0,
+    );
+
     const tableData = [
         ...(data ?? []),
         {
@@ -228,14 +238,14 @@ export default function Index({ pagination, transaction }: Props) {
 
                 if (row.isTotal) {
                     return (
-                        <span className="block text-right font-bold text-red-600">
+                        <span className="block text-right font-semibold text-red-600 dark:text-red-400">
                             {formatRupiah(totalDiscount)}
                         </span>
                     );
                 }
 
                 return (
-                    <span className="block text-right text-red-600">
+                    <span className="block text-right text-red-600 dark:text-red-400">
                         {formatRupiah(row.adjustment || 0)}
                     </span>
                 );
@@ -274,7 +284,7 @@ export default function Index({ pagination, transaction }: Props) {
 
                 if (row.isTotal) {
                     return (
-                        <span className="block text-right font-bold text-green-700">
+                        <span className="block text-right font-bold text-emerald-700 dark:text-emerald-400">
                             {formatRupiah(totalLaba)}
                         </span>
                     );
@@ -290,7 +300,7 @@ export default function Index({ pagination, transaction }: Props) {
                 const profit = revenue - costTotal;
 
                 return (
-                    <span className="block text-right text-green-600">
+                    <span className="block text-right text-emerald-600 dark:text-emerald-400">
                         {formatRupiah(profit)}
                     </span>
                 );
@@ -303,94 +313,240 @@ export default function Index({ pagination, transaction }: Props) {
         columns,
         getCoreRowModel: getCoreRowModel(),
     });
+
     const cancelReason =
         pagination.data?.[0]?.return_transaction?.[0]?.note ?? null;
+
+    const statusConfig = {
+        canceled: {
+            label: 'Dibatalkan',
+            className:
+                'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400',
+        },
+        paid: {
+            label: 'Lunas',
+            className:
+                'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400',
+        },
+        pending: {
+            label: 'Pending',
+            className:
+                'bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-400',
+        },
+    } as const;
+
+    const status =
+        statusConfig[transaction.payment_status as keyof typeof statusConfig] ??
+        statusConfig.pending;
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={title} />
-            <Card>
-                <CardContent>
-                    <div className="mb-4 space-y-1">
-                        <div className="text-sm text-gray-500">Invoice</div>
-                        <div className="text-lg font-semibold">
-                            {transaction.invoice_number}
-                        </div>
 
-                        <div className="mt-2 text-sm text-gray-500">
-                            Tanggal Transaksi
-                        </div>
-                        <div>{formatDate(transaction.transaction_date)}</div>
-
-                        <div className="mt-2 text-sm text-gray-500">
-                            Metode Pembayaran
-                        </div>
-                        <div>{transaction.payment_method?.name ?? '-'}</div>
-                        <div className="mt-2 text-sm text-gray-500">Status</div>
-                        <div>
-                            {transaction.payment_status === 'canceled' ? (
-                                <span className="inline-block rounded bg-red-100 px-2 py-1 text-xs font-semibold text-red-700">
-                                    Dibatalkan
-                                </span>
-                            ) : transaction.payment_status === 'paid' ? (
-                                <span className="inline-block rounded bg-green-100 px-2 py-1 text-xs font-semibold text-green-700">
-                                    Lunas
-                                </span>
-                            ) : (
-                                <span className="inline-block rounded bg-yellow-100 px-2 py-1 text-xs font-semibold text-yellow-700">
-                                    Pending
-                                </span>
-                            )}
-                        </div>
-
-                        {transaction.payment_status === 'canceled' &&
-                            cancelReason && (
-                                <>
-                                    <div className="mt-2 text-sm text-gray-500">
-                                        Alasan Pembatalan :
+            <div className="space-y-4">
+                {/* Header Card */}
+                <Card className="overflow-hidden border-none shadow-sm">
+                    <div className="h-1.5 w-full bg-gradient-to-r from-primary via-primary/60 to-primary/20" />
+                    <CardContent className="pt-6">
+                        <div className="flex flex-wrap items-start justify-between gap-4">
+                            <div className="flex items-center gap-3">
+                                <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                                    <Receipt className="h-5 w-5" />
+                                </div>
+                                <div>
+                                    <div className="text-xs font-medium text-muted-foreground">
+                                        Invoice
                                     </div>
-                                    <div className="rounded bg-red-50 p-2 text-sm text-red-700">
-                                        {cancelReason}
+                                    <div className="text-lg font-semibold leading-tight">
+                                        {transaction.invoice_number}
                                     </div>
-                                </>
-                            )}
-                    </div>
+                                </div>
+                            </div>
 
-                    <DataTable columns={columns} table={table} />
-                    <TablePagination pagination={pagination} />
+                            <Badge className={`${status.className} px-3 py-1 text-xs font-semibold hover:${status.className}`}>
+                                {status.label}
+                            </Badge>
+                        </div>
 
-                    <div className="mt-6 flex justify-end gap-2">
-                        <Button
-                            variant="outline"
-                            onClick={() =>
-                                router.visit(salesReport.index().url)
-                            }
-                        >
-                            Kembali
-                        </Button>
+                        <Separator className="my-5" />
 
-                        {transaction.payment_status === 'pending' && (
+                        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                            <div className="flex items-start gap-2.5">
+                                <CalendarDays className="mt-0.5 h-4 w-4 text-muted-foreground" />
+                                <div>
+                                    <div className="text-xs text-muted-foreground">
+                                        Tanggal Transaksi
+                                    </div>
+                                    <div className="text-sm font-medium">
+                                        {formatDate(transaction.transaction_date)}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex items-start gap-2.5">
+                                <User className="mt-0.5 h-4 w-4 text-muted-foreground" />
+                                <div>
+                                    <div className="text-xs text-muted-foreground">
+                                        Kasir
+                                    </div>
+                                    <div className="text-sm font-medium">
+                                        {transaction.cashier || '-'}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex items-start gap-2.5">
+                                <ShoppingBag className="mt-0.5 h-4 w-4 text-muted-foreground" />
+                                <div>
+                                    <div className="text-xs text-muted-foreground">
+                                        Customer
+                                    </div>
+                                    <div className="text-sm font-medium">
+                                        {transaction.customer || '-'}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex items-start gap-2.5">
+                                <CreditCard className="mt-0.5 h-4 w-4 text-muted-foreground" />
+                                <div>
+                                    <div className="text-xs text-muted-foreground">
+                                        Metode Pembayaran
+                                    </div>
+                                    <div className="text-sm font-medium">
+                                        {transaction.payment_method?.name ?? '-'}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {transaction.payment_status === 'canceled' && cancelReason && (
+                            <div className="mt-5 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-400">
+                                <span className="font-medium">Alasan Pembatalan: </span>
+                                {cancelReason}
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+
+                {/* Stat Cards */}
+                <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                    <Card className="border-none shadow-sm">
+                        <CardContent className="flex items-center gap-3 pt-6">
+                            <div className="flex h-9 w-9 items-center justify-center rounded-md bg-muted">
+                                <ShoppingBag className="h-4 w-4 text-muted-foreground" />
+                            </div>
+                            <div>
+                                <div className="text-xs text-muted-foreground">
+                                    Total Item
+                                </div>
+                                <div className="text-base font-semibold">
+                                    {totalQty}
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="border-none shadow-sm">
+                        <CardContent className="flex items-center gap-3 pt-6">
+                            <div className="flex h-9 w-9 items-center justify-center rounded-md bg-red-100 dark:bg-red-950">
+                                <TrendingDown className="h-4 w-4 text-red-600 dark:text-red-400" />
+                            </div>
+                            <div>
+                                <div className="text-xs text-muted-foreground">
+                                    Total Diskon
+                                </div>
+                                <div className="text-base font-semibold text-red-600 dark:text-red-400">
+                                    {formatRupiah(totalDiscount)}
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="border-none shadow-sm">
+                        <CardContent className="flex items-center gap-3 pt-6">
+                            <div className="flex h-9 w-9 items-center justify-center rounded-md bg-emerald-100 dark:bg-emerald-950">
+                                <TrendingUp className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                            </div>
+                            <div>
+                                <div className="text-xs text-muted-foreground">
+                                    Total Laba
+                                </div>
+                                <div className="text-base font-semibold text-emerald-600 dark:text-emerald-400">
+                                    {formatRupiah(totalLaba)}
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="border-none shadow-sm">
+                        <CardContent className="flex items-center gap-3 pt-6">
+                            <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary-foreground/15">
+                                <Wallet className="h-4 w-4" />
+                            </div>
+                            <div>
+                                <div className="text-xs">
+                                    Grand Total
+                                </div>
+                                <div className="text-base font-semibold">
+                                    {formatRupiah(grandTotal)}
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {/* Table */}
+                <Card className="border-none shadow-sm">
+                    <CardHeader>
+                        <CardTitle className="text-base">
+                            Rincian Item
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <DataTable columns={columns} table={table} />
+                        <TablePagination pagination={pagination} />
+
+                        <div className="mt-6 flex justify-end gap-2">
                             <Button
-                                className="bg-green-600 text-white hover:bg-green-700"
+                                variant="outline"
                                 onClick={() =>
-                                    router.visit(
-                                        `/sellings/${transaction.id}/payment`,
-                                    )
+                                    router.visit(salesReport.index().url)
                                 }
                             >
-                                Lunasi
+                                <ArrowLeft className="mr-1.5 h-4 w-4" />
+                                Kembali
                             </Button>
-                        )}
+                            <Button variant="outline" onClick={handlePrint}>
+                                <Printer className="mr-1.5 h-4 w-4" />
+                                Cetak
+                            </Button>
+                            {transaction.payment_status === 'pending' && (
+                                <Button
+                                    className="bg-green-600 text-white hover:bg-green-700"
+                                    onClick={() =>
+                                        router.visit(
+                                            `/sellings/${transaction.id}/payment`,
+                                        )
+                                    }
+                                >
+                                    <Wallet className="mr-1.5 h-4 w-4" />
+                                    Lunasi
+                                </Button>
+                            )}
 
-                        <Button
-                            variant="destructive"
-                            disabled={transaction.payment_status === 'canceled'}
-                            onClick={handleCancel}
-                        >
-                            Batalkan Transaksi
-                        </Button>
-                    </div>
-                </CardContent>
-            </Card>
+                            <Button
+                                variant="destructive"
+                                disabled={transaction.payment_status === 'canceled'}
+                                onClick={handleCancel}
+                            >
+                                <Ban className="mr-1.5 h-4 w-4" />
+                                Batalkan Transaksi
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
         </AppLayout>
     );
 }

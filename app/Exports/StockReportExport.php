@@ -59,7 +59,7 @@ class StockReportExport implements FromCollection, WithHeadings
             'brand' => $item->brand ?? '-',
 
             'stock_source' => match ($item->stock_source ?? null) {
-                'purchase' => 'Pembelian',
+                'purchase' => 'Produksi',
                 'sale' => 'Penjualan',
                 'adjustment' => 'Penyesuaian',
                 'return' => 'Retur',

@@ -115,7 +115,7 @@ export default function Index({ pagination, total_assets }: Props) {
                       const source = info.row.original.stock_source;
 
                       const labels: Record<string, string> = {
-                          purchase: 'Pembelian',
+                          purchase: 'Produksi',
                           sale: 'Penjualan',
                           adjustment: 'Penyesuaian',
                           return: 'Retur',

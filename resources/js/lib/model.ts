@@ -103,6 +103,8 @@ export type PaymentStatus = 'pending' | 'paid' | 'canceled';
 export interface SaleTransaction {
     id: number;
     invoice_number: string;
+    customer: string;
+    cashier: string;
     payment_method_id: number;
     payment_method?: PaymentMethod;
     change: number;
@@ -118,6 +120,7 @@ export interface SaleTransaction {
     reason: string;
     profit: number;
 }
+
 export interface SalesSummaryDetail {
     id: number;
     sales_summary_id: number;

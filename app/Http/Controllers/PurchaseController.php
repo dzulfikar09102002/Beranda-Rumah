@@ -34,8 +34,6 @@ class PurchaseController extends Controller
     {
         $code = $this->service->generateCode(
             productId: $request->product_id,
-            year: $request->year,
-            expiredDate: $request->expired_date
         );
         return response()->json([
             'code' => $code

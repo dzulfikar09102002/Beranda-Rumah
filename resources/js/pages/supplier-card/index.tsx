@@ -304,7 +304,7 @@ export default function Index({
                                         value="purchase"
                                         className="cursor-pointer"
                                     >
-                                        Pembelian
+                                        Produksi
                                     </SelectItem>
 
                                     <SelectItem
@@ -564,7 +564,7 @@ export default function Index({
                                                                             <td className="p-2">
                                                                                 {product.source ===
                                                                                 'purchase'
-                                                                                    ? 'Pembelian'
+                                                                                    ? 'Produksi'
                                                                                     : product.source ===
                                                                                         'consignment'
                                                                                       ? 'Titipan'

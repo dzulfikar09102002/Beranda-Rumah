@@ -21,9 +21,14 @@ class SellingController extends Controller
 
     public function index()
     {
-        $pagination = $this->service->getProducts(); 
         $categoryOptions = $this->service->getCategoryOptions();
-        return Inertia::render('sellings/index', compact('pagination', 'categoryOptions'));
+        return Inertia::render('sellings/index', compact('categoryOptions'));
+    }
+
+    public function getProducts()
+    {
+        $products = $this->service->getAllProducts();
+        return response()->json($products);
     }
     public function store(StoreSellingRequest $request)
     {

@@ -175,7 +175,7 @@ export default function Index({
         },
         columnHelper.accessor('code', {
             header: 'Kode',
-            footer: () => <span className="font-bold">TOTAL PEMBELIAN</span>,
+            footer: () => <span className="font-bold">TOTAL PRODUKSI</span>,
         }),
         columnHelper.accessor('product_id', {
             header: 'Produk',
@@ -202,7 +202,7 @@ export default function Index({
                     info.row.original.inventory_transactions?.[0]?.source;
 
                 const labels: Record<string, string> = {
-                    purchase: 'Pembelian',
+                    purchase: 'Produksi',
                     sale: 'Penjualan',
                     adjustment: 'Penyesuaian',
                     return: 'Retur',

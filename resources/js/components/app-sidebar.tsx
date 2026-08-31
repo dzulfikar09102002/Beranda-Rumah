@@ -108,7 +108,7 @@ const mainNavItems = [
                 icon: Receipt,
             },
             {
-                title: 'Laporan Pembelian',
+                title: 'Laporan Produksi',
                 href: '/reports/purchases',
                 icon: ShoppingBasket,
             },

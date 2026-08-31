@@ -89,53 +89,53 @@ class SalesReportService
         ];
     }
 
-public function getDetailSalesReport(int $id)
-{
-    $query = SaleTransactionDetail::with([
-        'purchase' => function ($q) {
-            $q->withTrashed()->with([
-                'product' => function ($q2) {
-                    $q2->withTrashed();
-                },
-                'supplier' => function ($q2) {
-                    $q2->withTrashed();
-                }
-            ]);
-        },
-        'returnTransaction'
-    ])
-    ->where('sale_transaction_id', $id);
+    public function getDetailSalesReport(int $id)
+    {
+        $query = SaleTransactionDetail::with([
+            'purchase' => function ($q) {
+                $q->withTrashed()->with([
+                    'product' => function ($q2) {
+                        $q2->withTrashed();
+                    },
+                    'supplier' => function ($q2) {
+                        $q2->withTrashed();
+                    }
+                ]);
+            },
+            'returnTransaction'
+        ])
+        ->where('sale_transaction_id', $id);
 
-    $data = $query
-        ->paginate(request('per_page', 10))
-        ->withQueryString();
+        $data = $query
+            ->paginate(request('per_page', 10))
+            ->withQueryString();
 
-    $grouped = $data->getCollection()
-        ->groupBy(function ($item) {
-            return implode('-', [
-                $item->purchase?->product?->id,
-                $item->purchase_price,
-                $item->selling_price,
-            ]);
-        })
-        ->map(function ($items) {
+        $grouped = $data->getCollection()
+            ->groupBy(function ($item) {
+                return implode('-', [
+                    $item->purchase?->product?->id,
+                    $item->purchase_price,
+                    $item->selling_price,
+                ]);
+            })
+            ->map(function ($items) {
 
-            $first = $items->first();
+                $first = $items->first();
 
-            $first->quantity = $items->sum('quantity');
+                $first->quantity = $items->sum('quantity');
 
-            $first->subtotal = $items->sum('subtotal');
+                $first->subtotal = $items->sum('subtotal');
 
-            $first->adjustment = $items->sum('adjustment');
+                $first->adjustment = $items->sum('adjustment');
 
-            return $first;
-        })
-        ->values();
+                return $first;
+            })
+            ->values();
 
-    $data->setCollection($grouped);
+        $data->setCollection($grouped);
 
-    return $data;
-}
+        return $data;
+    }
     public function cancel(int $id)
     {
         return DB::transaction(function () use ($id) {

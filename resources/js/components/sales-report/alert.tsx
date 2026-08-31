@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
     AlertDialog,
     AlertDialogCancel,
@@ -7,35 +8,37 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Button } from '../ui/button';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { router } from '@inertiajs/react';
-import { Spinner } from '../ui/spinner';
+import { Spinner } from '@/components/ui/spinner';
 import salesReport from '@/routes/reports/sales';
 
 export type AlertState = {
     type: 'delete' | 'restore' | 'cancel';
     isOpen: boolean;
     dataId: any;
-    processing: boolean;
 };
 
 type Props = {
     alertState: AlertState;
     onAlertClose: () => void;
-    onAlertProcessing: () => void;
     onSuccess?: () => void;
 };
 
-export default ({
+export default function ConfirmAlertDialog({
     alertState,
     onAlertClose,
-    onAlertProcessing,
     onSuccess,
-}: Props) => {
+}: Props) {
     const isDelete = alertState.type === 'delete';
     const isRestore = alertState.type === 'restore';
     const isCancel = alertState.type === 'cancel';
+
+    const [reason, setReason] = useState('');
+    const [reasonError, setReasonError] = useState('');
+    const [loading, setLoading] = useState(false);
 
     const title = isDelete
         ? 'Hapus Transaksi'
@@ -55,12 +58,53 @@ export default ({
           ? 'Gagal memulihkan transaksi'
           : 'Gagal membatalkan transaksi';
 
+    const handleConfirm = () => {
+        if (loading) return;
+
+        if (isCancel && !reason.trim()) {
+            setReasonError('Alasan wajib diisi');
+            return;
+        }
+
+        setLoading(true);
+
+        const options = {
+            preserveScroll: true,
+            onError: (err: any) => {
+                setLoading(false);
+                toast.error(errorMessage);
+                console.error(err);
+            },
+            onSuccess: () => {
+                document.body.style.pointerEvents = '';
+                document.body.removeAttribute('data-scroll-locked');
+                toast.success(successMessage);
+                onAlertClose();
+                onSuccess?.();
+            },
+            onFinish: () => {
+                setLoading(false);
+            },
+        };
+
+        if (isDelete) {
+            router.delete(salesReport.destroy(alertState.dataId).url, options);
+        } else if (isCancel) {
+            router.post(
+                salesReport.cancel(alertState.dataId).url,
+                { reason },
+                options,
+            );
+        }
+    };
+
     return (
         <AlertDialog
             open={alertState.isOpen}
             onOpenChange={(open) => {
-                // ✅ SELALU boleh close kalau user klik luar / escape
-                if (!open) {
+                if (!open && !loading) {
+                    document.body.style.pointerEvents = '';
+                    document.body.removeAttribute('data-scroll-locked');
                     onAlertClose();
                 }
             }}
@@ -69,75 +113,53 @@ export default ({
                 <AlertDialogHeader>
                     <AlertDialogTitle>{title}</AlertDialogTitle>
                     <AlertDialogDescription>
-                        Apakah anda yakin?
+                        {isCancel
+                            ? 'Masukkan alasan pembatalan transaksi ini.'
+                            : 'Apakah anda yakin?'}
                     </AlertDialogDescription>
                 </AlertDialogHeader>
 
+                {isCancel && (
+                    <div className="space-y-1.5">
+                        <Textarea
+                            placeholder="Contoh: Salah input / customer batal / dll..."
+                            value={reason}
+                            disabled={loading}
+                            onChange={(e) => {
+                                setReason(e.target.value);
+                                if (reasonError) setReasonError('');
+                            }}
+                        />
+                        {reasonError && (
+                            <p className="text-sm text-red-600">
+                                {reasonError}
+                            </p>
+                        )}
+                    </div>
+                )}
+
                 <AlertDialogFooter>
-                    <AlertDialogCancel disabled={alertState.processing}>
+                    <AlertDialogCancel
+                        disabled={loading}
+                        onClick={() => {
+                            document.body.style.pointerEvents = '';
+                            document.body.removeAttribute('data-scroll-locked');
+                            onAlertClose();
+                        }}
+                    >
                         Batal
                     </AlertDialogCancel>
 
                     <Button
-                        variant={
-                            isDelete || isCancel ? 'destructive' : 'default'
-                        }
-                        disabled={alertState.processing}
-                        onClick={() => {
-                            // 🔥 GUARD (anti double klik)
-                            if (alertState.processing) return;
-
-                            const options = {
-                                preserveScroll: true,
-                                onBefore: () => {
-                                    onAlertProcessing();
-                                },
-
-                                onError: (errors: any) => {
-                                    toast.error(errorMessage);
-                                    console.error(errors);
-                                    onAlertClose();
-                                },
-
-                                onSuccess: () => {
-                                    toast.success(successMessage);
-                                    onAlertClose();
-                                    onSuccess?.();
-                                },
-
-                                onFinish: () => {
-                                    // 🔥 tambahan safety (anti nyangkut)
-                                    onAlertClose();
-                                },
-                            };
-
-                            if (isDelete) {
-                                router.delete(
-                                    salesReport.destroy(alertState.dataId).url,
-                                    options,
-                                );
-                            } else if (isRestore) {
-                                router.post(
-                                    salesReport.restore(alertState.dataId).url,
-                                    {},
-                                    options,
-                                );
-                            } else if (isCancel) {
-                                router.post(
-                                    salesReport.cancel(alertState.dataId).url,
-                                    {},
-                                    options,
-                                );
-                            }
-                        }}
+                        variant={isDelete || isCancel ? 'destructive' : 'default'}
+                        disabled={loading}
+                        onClick={handleConfirm}
                     >
-                        <Spinner
-                            className={alertState.processing ? '' : 'hidden'}
-                        />
+                        {loading && <Spinner className="mr-2" />}
                         Ya
                     </Button>
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
     );
-};
+}

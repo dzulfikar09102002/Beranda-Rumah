@@ -72,7 +72,7 @@ type Props = {
 
 export default function Index({ pagination, categoryOptions }: Props) {
     const { data } = pagination;
-    console.log(data);
+
     const query = useQuery();
     const search = query.search || '';
     const category_id = query.category_id || 'all';
@@ -147,31 +147,7 @@ export default function Index({ pagination, categoryOptions }: Props) {
             header: 'Harga Jual',
             cell: (info) => formatRupiah(info.getValue()),
         }),
-        columnHelper.accessor('minimum_stock', {
-            header: () => <div className="text-center">Minimum Stok</div>,
-            cell: (info) => {
-                const value = info.getValue();
-
-                return (
-                    <div className="text-center">
-                        {value == null || value === '' ? '-' : value}
-                    </div>
-                );
-            },
-        }),
-        columnHelper.accessor('has_expired', {
-            header: 'Expired',
-            cell: (info) =>
-                info.getValue() ? (
-                    <span className="rounded bg-green-100 px-2 py-1 text-xs text-green-600">
-                        Ya
-                    </span>
-                ) : (
-                    <span className="rounded bg-red-100 px-2 py-1 text-xs text-red-600">
-                        Tidak
-                    </span>
-                ),
-        }),
+        
         {
             id: 'action',
             header: 'Aksi',

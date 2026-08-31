@@ -2,17 +2,18 @@
 
 import {
     Dialog,
+    DialogClose,
     DialogContent,
+    DialogFooter,
     DialogHeader,
     DialogTitle,
-    DialogFooter,
 } from '@/components/ui/dialog';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { Field, FieldLabel } from '@/components/ui/field';
-import { useEffect } from 'react';
+import { FormEventHandler, useEffect, useRef } from 'react';
 import { useForm } from '@inertiajs/react';
 import { toast } from 'sonner';
 import purchases from '@/routes/reports/purchases';
@@ -35,6 +36,8 @@ type Props = {
 };
 
 export default function Modal({ open, item, onClose, supplierOptions }: Props) {
+    const dialogRef = useRef<HTMLFormElement | null>(null);
+
     const form = useForm({
         code: '',
         quantity: 1,
@@ -44,22 +47,18 @@ export default function Modal({ open, item, onClose, supplierOptions }: Props) {
         purchase_date: '',
         expired_date: '',
         supplier_id: '' as number | '',
-        source: '',
+        source: 'purchase',
         total_payment: 0,
     });
 
     const cleanNumber = (value: any) => {
         const num = Number(value ?? 0);
-
-        return Number.isInteger(num) ? num : parseFloat(num.toString());
+        return Math.round(num);
     };
 
     const sourceOptions: Option[] = [
-        { value: 'purchase', label: 'Pembelian' },
+        { value: 'purchase', label: 'Produksi' },
         { value: 'consignment', label: 'Titipan' },
-        { value: 'return', label: 'Pengembalian' },
-        { value: 'adjustment', label: 'Penyesuaian' },
-        { value: 'transfer', label: 'Transfer Masuk' },
         { value: 'other', label: 'Lainnya' },
     ];
 
@@ -84,7 +83,8 @@ export default function Modal({ open, item, onClose, supplierOptions }: Props) {
         }
     }, [item]);
 
-    const submit = () => {
+    const submit: FormEventHandler<HTMLFormElement> = (e) => {
+        e.preventDefault();
         if (!item) return;
 
         form.patch(purchases.update(item.id).url, {
@@ -100,191 +100,214 @@ export default function Modal({ open, item, onClose, supplierOptions }: Props) {
     };
 
     return (
-        <Dialog open={open} onOpenChange={onClose} modal={false}>
-            <DialogContent className="top-[10%] max-w-3xl translate-y-0">
-                <DialogHeader>
-                    <DialogTitle>Edit Pembelian</DialogTitle>
-                </DialogHeader>
+        <Dialog
+            open={open}
+            onOpenChange={(isOpen) => {
+                if (!isOpen && !form.processing) {
+                    onClose();
+                }
+            }}
+        >
+            <DialogContent className="top-[10%] w-full max-w-3xl translate-y-0 p-6" asChild>
+                <form ref={dialogRef} onSubmit={submit}>
+                    <DialogHeader className="mb-4">
+                        <DialogTitle>Edit Data Produksi</DialogTitle>
+                    </DialogHeader>
 
-                <div className="grid grid-cols-2 gap-4">
-                    <Field>
-                        <FieldLabel>Kode</FieldLabel>
-                        <Input
-                            value={form.data.code}
-                            onChange={(e) =>
-                                form.setData('code', e.target.value)
-                            }
-                        />
-                    </Field>
-
-                    <Field>
-                        <FieldLabel>Jumlah</FieldLabel>
-                        <Input
-                            type="number"
-                            value={form.data.quantity}
-                            onChange={(e) =>
-                                form.setData('quantity', Number(e.target.value))
-                            }
-                        />
-                    </Field>
-
-                    <Field>
-                        <FieldLabel>Tahun</FieldLabel>
-                        <Input
-                            type="number"
-                            value={form.data.year}
-                            onChange={(e) =>
-                                form.setData('year', Number(e.target.value))
-                            }
-                        />
-                    </Field>
-
-                    <Field>
-                        <FieldLabel>Harga Beli</FieldLabel>
-                        <Input
-                            type="number"
-                            value={form.data.purchase_price}
-                            onChange={(e) =>
-                                form.setData(
-                                    'purchase_price',
-                                    Number(e.target.value),
-                                )
-                            }
-                        />
-                    </Field>
-
-                    <Field>
-                        <FieldLabel>Harga Jual</FieldLabel>
-                        <Input
-                            type="number"
-                            value={form.data.selling_price}
-                            onChange={(e) =>
-                                form.setData(
-                                    'selling_price',
-                                    Number(e.target.value),
-                                )
-                            }
-                        />
-                    </Field>
-
-                    <Field>
-                        <FieldLabel>Tanggal Masuk</FieldLabel>
-                        <DatePicker
-                            value={form.data.purchase_date}
-                            onChange={(val) =>
-                                form.setData('purchase_date', val ?? '')
-                            }
-                        />
-                    </Field>
-
-                    <Field>
-                        <FieldLabel>Tanggal Expired</FieldLabel>
-                        <DatePicker
-                            value={form.data.expired_date}
-                            onChange={(val) =>
-                                form.setData('expired_date', val ?? '')
-                            }
-                        />
-                    </Field>
-
-                    <Field>
-                        <FieldLabel>Sumber</FieldLabel>
-
-                        <Combobox
-                            items={sourceOptions}
-                            value={
-                                sourceOptions.find(
-                                    (opt) => opt.value === form.data.source,
-                                ) ?? null
-                            }
-                            onValueChange={(val: Option | null) =>
-                                form.setData('source', val?.value ?? 'purchase')
-                            }
-                        >
-                            <ComboboxInput
-                                placeholder="Pilih sumber"
-                                className="w-full"
+                    <div className="grid grid-cols-2 gap-4">
+                        <Field>
+                            <FieldLabel>Kode</FieldLabel>
+                            <Input
+                                value={form.data.code}
+                                onChange={(e) =>
+                                    form.setData('code', e.target.value)
+                                }
                             />
+                        </Field>
 
-                            <ComboboxContent>
-                                <ComboboxEmpty>Tidak ditemukan</ComboboxEmpty>
-
-                                <ComboboxList>
-                                    {(el) => (
-                                        <ComboboxItem key={el.value} value={el}>
-                                            {el.label}
-                                        </ComboboxItem>
-                                    )}
-                                </ComboboxList>
-                            </ComboboxContent>
-                        </Combobox>
-                    </Field>
-
-                    <Field className="col-span-2">
-                        <FieldLabel>Supplier</FieldLabel>
-
-                        <Combobox
-                            items={safeSupplierOptions}
-                            value={
-                                safeSupplierOptions.find(
-                                    (el) =>
-                                        Number(el.value) ===
-                                        Number(form.data.supplier_id),
-                                ) ?? null
-                            }
-                            onValueChange={(val: Option | null) =>
-                                form.setData(
-                                    'supplier_id',
-                                    val?.value ? Number(val.value) : '',
-                                )
-                            }
-                        >
-                            <ComboboxInput
-                                placeholder="Pilih Supplier"
-                                className={`w-full ${
-                                    form.data.source === 'consignment' &&
-                                    !form.data.supplier_id
-                                        ? 'border-red-500'
-                                        : ''
-                                }`}
+                        <Field>
+                            <FieldLabel>Jumlah</FieldLabel>
+                            <Input
+                                type="number"
+                                value={form.data.quantity}
+                                onChange={(e) =>
+                                    form.setData(
+                                        'quantity',
+                                        Number(e.target.value),
+                                    )
+                                }
                             />
+                        </Field>
 
-                            <ComboboxContent>
-                                <ComboboxEmpty>Tidak ditemukan</ComboboxEmpty>
+                        <Field>
+                            <FieldLabel>Tahun</FieldLabel>
+                            <Input
+                                type="number"
+                                value={form.data.year}
+                                onChange={(e) =>
+                                    form.setData(
+                                        'year',
+                                        Number(e.target.value),
+                                    )
+                                }
+                            />
+                        </Field>
 
-                                <ComboboxList>
-                                    {(el) => (
-                                        <ComboboxItem key={el.value} value={el}>
-                                            {el.label}
-                                        </ComboboxItem>
-                                    )}
-                                </ComboboxList>
-                            </ComboboxContent>
-                        </Combobox>
+                        <Field>
+                            <FieldLabel>Harga Beli</FieldLabel>
+                            <Input
+                                type="number"
+                                value={form.data.purchase_price}
+                                onChange={(e) =>
+                                    form.setData(
+                                        'purchase_price',
+                                        Number(e.target.value),
+                                    )
+                                }
+                            />
+                        </Field>
 
-                        {form.data.source === 'consignment' &&
-                            !form.data.supplier_id && (
-                                <p className="text-xs text-red-500">
-                                    Supplier wajib untuk barang titipan
-                                </p>
-                            )}
-                    </Field>
-                </div>
+                        <Field>
+                            <FieldLabel>Harga Jual</FieldLabel>
+                            <Input
+                                type="number"
+                                value={form.data.selling_price}
+                                onChange={(e) =>
+                                    form.setData(
+                                        'selling_price',
+                                        Number(e.target.value),
+                                    )
+                                }
+                            />
+                        </Field>
 
-                <DialogFooter>
-                    <Button
-                        variant="outline"
-                        onClick={onClose}
-                        disabled={form.processing}
-                    >
-                        Batal
-                    </Button>
+                        <Field>
+                            <FieldLabel>Tanggal</FieldLabel>
+                            <DatePicker
+                                value={form.data.purchase_date}
+                                onChange={(val) =>
+                                    form.setData('purchase_date', val ?? '')
+                                }
+                            />
+                        </Field>
 
-                    <Button onClick={submit} disabled={form.processing}>
-                        {form.processing && <Spinner />}
-                        Simpan
-                    </Button>
-                </DialogFooter>
+                        <Field>
+                            <FieldLabel>Sumber</FieldLabel>
+
+                            <Combobox
+                                items={sourceOptions}
+                                value={
+                                    sourceOptions.find(
+                                        (opt) =>
+                                            opt.value === form.data.source,
+                                    ) ?? null
+                                }
+                                onValueChange={(val: Option | null) =>
+                                    form.setData(
+                                        'source',
+                                        val?.value ?? 'purchase',
+                                    )
+                                }
+                            >
+                                <ComboboxInput
+                                    placeholder="Pilih sumber"
+                                    className="w-full cursor-pointer"
+                                />
+
+                                <ComboboxContent container={dialogRef}>
+                                    <ComboboxEmpty>
+                                        Tidak ditemukan
+                                    </ComboboxEmpty>
+
+                                    <ComboboxList>
+                                        {(el) => (
+                                            <ComboboxItem
+                                                key={el.value}
+                                                value={el}
+                                                className="cursor-pointer"
+                                            >
+                                                {el.label}
+                                            </ComboboxItem>
+                                        )}
+                                    </ComboboxList>
+                                </ComboboxContent>
+                            </Combobox>
+                        </Field>
+
+                        <Field>
+                            <FieldLabel>Supplier</FieldLabel>
+
+                            <Combobox
+                                items={safeSupplierOptions}
+                                value={
+                                    safeSupplierOptions.find(
+                                        (el) =>
+                                            Number(el.value) ===
+                                            Number(form.data.supplier_id),
+                                    ) ?? null
+                                }
+                                onValueChange={(val: Option | null) =>
+                                    form.setData(
+                                        'supplier_id',
+                                        val?.value ? Number(val.value) : '',
+                                    )
+                                }
+                            >
+                                <ComboboxInput
+                                    placeholder="Pilih Supplier"
+                                    className={`w-full cursor-pointer ${
+                                        form.data.source === 'consignment' &&
+                                        !form.data.supplier_id
+                                            ? 'border-red-500'
+                                            : ''
+                                    }`}
+                                />
+
+                                <ComboboxContent container={dialogRef}>
+                                    <ComboboxEmpty>
+                                        Tidak ditemukan
+                                    </ComboboxEmpty>
+
+                                    <ComboboxList>
+                                        {(el) => (
+                                            <ComboboxItem
+                                                key={el.value}
+                                                value={el}
+                                                className="cursor-pointer"
+                                            >
+                                                {el.label}
+                                            </ComboboxItem>
+                                        )}
+                                    </ComboboxList>
+                                </ComboboxContent>
+                            </Combobox>
+
+                            {form.data.source === 'consignment' &&
+                                !form.data.supplier_id && (
+                                    <p className="text-xs text-red-500">
+                                        Supplier wajib untuk barang titipan
+                                    </p>
+                                )}
+                        </Field>
+                    </div>
+
+                    <DialogFooter className="mt-6">
+                        <DialogClose asChild>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                disabled={form.processing}
+                            >
+                                Batal
+                            </Button>
+                        </DialogClose>
+
+                        <Button type="submit" disabled={form.processing}>
+                            {form.processing && <Spinner />}
+                            Simpan
+                        </Button>
+                    </DialogFooter>
+                </form>
             </DialogContent>
         </Dialog>
     );
