@@ -5,7 +5,7 @@ use App\Services\SalesReportService;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use App\models\SaleTransaction;
+use App\Models\SaleTransaction;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class SalesReportController extends Controller
