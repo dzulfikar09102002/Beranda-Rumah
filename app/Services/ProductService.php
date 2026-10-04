@@ -66,6 +66,7 @@ class ProductService
             'name'           => $data['name'],
             'purchase_price' => $purchasePrice,
             'selling_price'  => $sellingPrice,
+            'url_image'      => $data['url_image'] ?? null,
             'created_by'     => $user->id,
         ]);
     }
@@ -81,6 +82,7 @@ class ProductService
             'name'           => $input['name'],
             'purchase_price' => $purchasePrice,
             'selling_price'  => $sellingPrice,
+            'url_image'      => $input['url_image'] ?? null,
             'updated_by'   => auth()->user()->id,
         ]);
     }

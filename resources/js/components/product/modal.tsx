@@ -12,7 +12,8 @@ import { Field, FieldError, FieldLabel, FieldSet } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
-import { SubmitEventHandler, useEffect, useRef } from 'react';
+import { SubmitEventHandler, useEffect, useRef, useState } from 'react';
+import { ImageIcon, ImageOff, X } from 'lucide-react';
 import { useForm } from '@inertiajs/react';
 import { toast } from 'sonner';
 import products from '@/routes/products';
@@ -24,6 +25,49 @@ import {
     ComboboxItem,
     ComboboxList,
 } from '../ui/combobox';
+
+function ImagePreview({ url }: { url: string }) {
+    const [status, setStatus] = useState<'loading' | 'loaded' | 'error'>(
+        'loading',
+    );
+    const [lastUrl, setLastUrl] = useState(url);
+
+    if (url !== lastUrl) {
+        setLastUrl(url);
+        setStatus('loading');
+    }
+
+    if (!url) {
+        return (
+            <div className="flex aspect-square w-20 shrink-0 items-center justify-center rounded-lg border border-dashed text-muted-foreground">
+                <ImageIcon className="h-6 w-6" />
+            </div>
+        );
+    }
+
+    return (
+        <div className="relative aspect-square w-20 shrink-0 overflow-hidden rounded-lg border bg-muted">
+            {status === 'error' ? (
+                <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-center text-[10px] text-destructive">
+                    <ImageOff className="h-5 w-5" />
+                    Gagal dimuat
+                </div>
+            ) : (
+                <img
+                    key={url}
+                    src={url}
+                    alt="Preview"
+                    onLoad={() => setStatus('loaded')}
+                    onError={() => setStatus('error')}
+                    className={`h-full w-full object-cover transition-opacity ${status === 'loaded' ? 'opacity-100' : 'opacity-0'}`}
+                />
+            )}
+            {status === 'loading' && (
+                <div className="absolute inset-0 animate-pulse bg-muted" />
+            )}
+        </div>
+    );
+}
 
 export type ModalState = {
     isOpen: boolean;
@@ -68,6 +112,7 @@ export default function Modal({
         category_id: '',
         purchase_price: '',
         selling_price: '',
+        url_image: '',
     });
 
     const submit: SubmitEventHandler<HTMLFormElement> = (e) => {
@@ -109,6 +154,7 @@ export default function Modal({
                     existing.selling_price !== null && existing.selling_price !== undefined && existing.selling_price !== ''
                         ? String(Math.round(Number(existing.selling_price)))
                         : '',
+                url_image: existing.url_image ?? '',
             });
         } else {
             reset();
@@ -217,6 +263,46 @@ export default function Modal({
                                     setData('selling_price', e.target.value)
                                 }
                             />
+                        </Field>
+
+                        <Field>
+                            <FieldLabel>URL Gambar</FieldLabel>
+                            <div className="flex items-start gap-3">
+                                <ImagePreview url={data.url_image.trim()} />
+                                <div className="flex-1 space-y-1">
+                                    <div className="relative">
+                                        <Input
+                                            type="url"
+                                            inputMode="url"
+                                            placeholder="https://contoh.com/gambar.jpg"
+                                            value={data.url_image}
+                                            onChange={(e) =>
+                                                setData(
+                                                    'url_image',
+                                                    e.target.value,
+                                                )
+                                            }
+                                            className={`pr-9 ${errors.url_image ? 'border-red-500' : ''}`}
+                                        />
+                                        {data.url_image && (
+                                            <button
+                                                type="button"
+                                                aria-label="Hapus URL gambar"
+                                                onClick={() =>
+                                                    setData('url_image', '')
+                                                }
+                                                className="absolute top-1/2 right-2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                                            >
+                                                <X className="h-4 w-4" />
+                                            </button>
+                                        )}
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">
+                                        Opsional. Ditampilkan di halaman toko.
+                                    </p>
+                                </div>
+                            </div>
+                            <FieldError>{errors.url_image}</FieldError>
                         </Field>
                     </FieldSet>
 

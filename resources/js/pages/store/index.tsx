@@ -1,4 +1,4 @@
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
 import {
     ArrowUp,
     ArrowUpRight,
@@ -19,6 +19,7 @@ import { toast, Toaster } from 'sonner';
 import { CartDrawer, WhatsappIcon } from '@/components/store/cart-drawer';
 import { flyToCart } from '@/components/store/fly-to-cart';
 import { Hero } from '@/components/store/hero';
+import { Pagination } from '@/components/store/pagination';
 import { ProductCard } from '@/components/store/product-card';
 import { ProductModal } from '@/components/store/product-modal';
 import { Reveal } from '@/components/store/reveal';
@@ -30,13 +31,13 @@ import type {
 } from '@/components/store/types';
 import { useCart } from '@/components/store/use-cart';
 import {
+    filterKey,
     useDebouncedValue,
     useProductFeed,
 } from '@/components/store/use-product-feed';
 import type { FeedFilters, Sort } from '@/components/store/use-product-feed';
 import { emojiFor, formatRupiah } from '@/components/store/utils';
 import { cn } from '@/lib/utils';
-import { dashboard, login } from '@/routes';
 import '../../../css/store.css';
 
 const SLOGAN = 'Ngopi dan Ngeteh Ga Harus Mahal';
@@ -85,7 +86,6 @@ export default function StoreIndex({
     minPrice: number | null;
     initialPage: Paginated<StoreProduct>;
 }) {
-    const { auth } = usePage().props as { auth?: { user?: unknown } };
     const cart = useCart();
 
     const [search, setSearch] = useState('');
@@ -97,11 +97,25 @@ export default function StoreIndex({
     const [scrolled, setScrolled] = useState(false);
 
     const progressRef = useRef<HTMLDivElement>(null);
-    const sentinelRef = useRef<HTMLDivElement>(null);
 
     const debouncedSearch = useDebouncedValue(search, 300);
     const filters: FeedFilters = { search: debouncedSearch, category, sort };
-    const feed = useProductFeed(initialPage, filters);
+    const [page, setPage] = useState(1);
+
+    // New search / category / sort always starts from the first page.
+    const currentFilterKey = filterKey(filters);
+    const [lastFilterKey, setLastFilterKey] = useState(currentFilterKey);
+
+    if (currentFilterKey !== lastFilterKey) {
+        setLastFilterKey(currentFilterKey);
+        setPage(1);
+    }
+
+    const feed = useProductFeed(
+        initialPage,
+        filters,
+        currentFilterKey === lastFilterKey ? page : 1,
+    );
     const searching = feed.pending || search.trim() !== debouncedSearch.trim();
 
     useEffect(() => {
@@ -120,26 +134,15 @@ export default function StoreIndex({
         return () => window.removeEventListener('scroll', onScroll);
     }, []);
 
-    // Infinite scroll: chain the next page request when the sentinel shows up.
-    useEffect(() => {
-        const sentinel = sentinelRef.current;
+    const goToPage = (target: number) => {
+        setPage(target);
 
-        if (!sentinel || !feed.hasMore || feed.error) {
-            return;
+        const menu = document.getElementById('menu');
+
+        if (menu && menu.getBoundingClientRect().top < 0) {
+            menu.scrollIntoView({ behavior: 'smooth' });
         }
-
-        const observer = new IntersectionObserver(
-            ([entry]) => {
-                if (entry.isIntersecting) {
-                    feed.loadMore();
-                }
-            },
-            { rootMargin: '600px' },
-        );
-        observer.observe(sentinel);
-
-        return () => observer.disconnect();
-    }, [feed]);
+    };
 
     const addToCart = (
         product: StoreProduct,
@@ -269,7 +272,6 @@ export default function StoreIndex({
                     </div>
 
                     <div className="ml-auto flex items-center gap-2 md:ml-2">
-                        
                         <button
                             id="store-cart-button"
                             type="button"
@@ -504,11 +506,14 @@ export default function StoreIndex({
                             </div>
                         ) : (
                             <>
-                                <div className="mb-4 flex items-center justify-between gap-4 text-sm text-(--s-ink)/50">
+                                <div className="mb-6 flex items-center justify-between gap-4 text-sm text-(--s-ink)/50">
                                     <p>
                                         Menampilkan{' '}
                                         <strong className="text-(--s-ink)">
-                                            {feed.items.length}
+                                            {(feed.page - 1) * feed.perPage + 1}
+                                            –
+                                            {(feed.page - 1) * feed.perPage +
+                                                feed.items.length}
                                         </strong>{' '}
                                         dari {feed.total} menu
                                     </p>
@@ -516,16 +521,9 @@ export default function StoreIndex({
                                         Halaman {feed.page} / {feed.lastPage}
                                     </p>
                                 </div>
-                                <div className="mb-6 h-1 overflow-hidden rounded-full bg-(--s-ink)/5">
-                                    <div
-                                        className="h-full rounded-full bg-gradient-to-r from-(--s-honey) to-(--s-terra) transition-all duration-700"
-                                        style={{
-                                            width: `${feed.total ? (feed.items.length / feed.total) * 100 : 0}%`,
-                                        }}
-                                    />
-                                </div>
 
                                 <div
+                                    key={feed.key}
                                     className={cn(
                                         'grid grid-cols-2 gap-3 transition-opacity duration-300 sm:gap-5 md:grid-cols-3 lg:grid-cols-4',
                                         feed.pending &&
@@ -533,9 +531,12 @@ export default function StoreIndex({
                                     )}
                                 >
                                     {feed.items.map((product, index) => (
-                                        <Reveal
+                                        <div
                                             key={product.id}
-                                            delay={(index % 4) * 70}
+                                            className="store-fade-up"
+                                            style={{
+                                                animationDelay: `${index * 45}ms`,
+                                            }}
                                         >
                                             <ProductCard
                                                 product={product}
@@ -549,50 +550,36 @@ export default function StoreIndex({
                                                 onQuantity={cart.setQuantity}
                                                 onOpen={openProduct}
                                             />
-                                        </Reveal>
+                                        </div>
                                     ))}
                                 </div>
 
-                                {feed.hasMore && (
-                                    <div ref={sentinelRef} className="mt-10">
-                                        {feed.loadingMore ? (
-                                            <div className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3 lg:grid-cols-4">
-                                                {Array.from(
-                                                    { length: 4 },
-                                                    (_, index) => (
-                                                        <div
-                                                            key={index}
-                                                            className="store-shimmer aspect-[3/4] rounded-3xl"
-                                                        />
-                                                    ),
-                                                )}
-                                            </div>
-                                        ) : (
-                                            <div className="flex flex-col items-center gap-2">
-                                                <button
-                                                    type="button"
-                                                    onClick={feed.loadMore}
-                                                    className="rounded-full bg-white px-6 py-3 text-sm font-semibold text-(--s-ink) shadow-sm ring-1 ring-(--s-ink)/10 transition hover:-translate-y-0.5 hover:shadow-lg"
-                                                >
-                                                    Muat menu lainnya
-                                                </button>
-                                                {feed.error && (
-                                                    <p className="text-xs text-red-500">
-                                                        {feed.error}
-                                                    </p>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
+                                {feed.error && (
+                                    <p className="mt-6 text-center text-sm text-red-500">
+                                        {feed.error}{' '}
+                                        <button
+                                            type="button"
+                                            onClick={feed.retry}
+                                            className="font-semibold underline"
+                                        >
+                                            Coba lagi
+                                        </button>
+                                    </p>
                                 )}
 
-                                {!feed.hasMore &&
-                                    feed.items.length > 0 &&
-                                    !feed.pending && (
-                                        <p className="mt-12 text-center text-sm text-(--s-ink)/40">
-                                            ☕ Semua menu sudah ditampilkan
-                                        </p>
-                                    )}
+                                <Pagination
+                                    page={
+                                        currentFilterKey === lastFilterKey
+                                            ? page
+                                            : 1
+                                    }
+                                    lastPage={feed.lastPage}
+                                    loading={feed.pending}
+                                    onChange={goToPage}
+                                    onPrefetch={(target) =>
+                                        feed.prefetch(filters, target)
+                                    }
+                                />
                             </>
                         )}
                     </div>
