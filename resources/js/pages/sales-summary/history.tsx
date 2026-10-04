@@ -5,7 +5,7 @@ import salesSummary from '@/routes/sales-summary';
 
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Search, SquareArrowOutUpRight } from 'lucide-react';
+import { Printer, Search, SquareArrowOutUpRight } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 import {
@@ -73,13 +73,27 @@ const columns: ColumnDef<SalesSummary, any>[] = [
             };
 
             return (
-                <div className="flex justify-center">
+                <div className="flex justify-center gap-2">
                     <Button
                         size="icon"
                         variant="outline"
                         onClick={() => meta.onDetail(row.id)}
                     >
                         <SquareArrowOutUpRight size={16} />
+                    </Button>
+                    <Button
+                        size="icon"
+                        variant="outline"
+                        title="Cetak Rekap"
+                        onClick={() =>
+                            window.open(
+                                `/sales-summary/${row.id}/print`,
+                                'PRINT',
+                                'height=400,width=600',
+                            )
+                        }
+                    >
+                        <Printer size={16} />
                     </Button>
                 </div>
             );

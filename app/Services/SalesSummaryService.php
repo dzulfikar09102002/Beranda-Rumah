@@ -2,63 +2,56 @@
 
 namespace App\Services;
 
-use App\Models\CashReconciliation;
 use App\Models\SalesSummary;
 use App\Models\SalesSummaryDetail;
 use App\Models\SaleTransaction;
+use App\Models\Setting;
 use Carbon\Carbon;
-use DateTimeInterface;
 use Illuminate\Support\Facades\DB;
 
 class SalesSummaryService 
 {
-    public function getSalesSummaryToday(?DateTimeInterface $customStart = null)
+
+    public function getSalesSummaryToday()
     {
-        if ($customStart) {
-            $start = $customStart;
-        } else {
-            $lastSummary = SalesSummary::latest('date')->first();
-            $start = $lastSummary
-                ? Carbon::parse($lastSummary->date)->addSecond()
-                : now()->startOfDay();
-        }
+
+        $lastSummary = SalesSummary::latest('date')->first();
+
+        $start = $lastSummary
+            ? \Carbon\Carbon::parse($lastSummary->date)->addSecond()
+            : now()->startOfDay();
 
         $end = now();
 
-        $validTransactionsQuery = fn () => SaleTransaction::query()
-            ->whereBetween('transaction_date', [$start, $end])
-            ->whereNotNull('payment_method_id')
-            ->where('payment_status', '!=', 'pending');
-
-        $pagination = $validTransactionsQuery()
-            ->with([
-                'paymentMethod',
-                'purchasingMethod',
-                'groupedDetails.purchase.product',
-            ])
-            ->withSum(
-                'details as total_revenue',
-                DB::raw('(quantity * selling_price) - COALESCE(adjustment,0)')
-            )
-            ->withSum(
-                'details as total_cost',
-                DB::raw('quantity * purchase_price')
-            )
-            ->latest('transaction_date')
-            ->paginate(request('per_page', 10))
+        $pagination = SaleTransaction::with([
+            'paymentMethod',
+            'purchasingMethod',
+            'groupedDetails.purchase.product',
+        ])
+        ->withSum(
+            'details as total_revenue',
+            \DB::raw('(quantity * selling_price) - COALESCE(adjustment,0)')
+        )
+        ->withSum(
+            'details as total_cost',
+            \DB::raw('quantity * purchase_price')
+        )
+        ->whereBetween('transaction_date', [$start, $end])
+        ->latest('transaction_date')
+        ->paginate(request('per_page', 10))
             ->withQueryString();
 
-        $transactions = $validTransactionsQuery()
-            ->with([
-                'groupedDetails',
-                'paymentMethod'
-            ])
+        $transactions = SaleTransaction::with([
+            'groupedDetails',
+            'paymentMethod'
+        ])
+            ->whereBetween('transaction_date', [$start, $end])
             ->get(); 
 
         $totalTransaksi = $transactions->count();
 
         $totalItem = $transactions
-            ->flatMap(fn ($trx) => $trx->details ?? collect())
+            ->flatMap(fn ($trx) => $trx->details)
             ->sum('quantity');
 
         $totalPendapatan = $transactions->sum(function ($trx) {
@@ -66,24 +59,34 @@ class SalesSummaryService
         });
 
         $totalProfit = $transactions->sum(function ($trx) {
-            return ($trx->details ?? collect())->sum(function ($detail) {
-                $subtotal = (float) ($detail->subtotal ?? 0) - (float) ($detail->adjustment ?? 0);
-                $modal = (float) ($detail->purchase_price ?? 0) * (float) ($detail->quantity ?? 0);
+
+            return $trx->details->sum(function ($detail) {
+
+                $subtotal =
+                    (float) ($detail->subtotal ?? 0) -
+                    (float) ($detail->adjustment ?? 0);
+
+                $modal =
+                    (float) ($detail->purchase_price ?? 0) *
+                    (float) ($detail->quantity ?? 0);
+
                 return $subtotal - $modal;
             });
         });
 
         $byPaymentMethod = $transactions
-            ->filter(fn ($trx) => !is_null($trx->paymentMethod))
-            ->groupBy('payment_method_id')
+            ->groupBy(fn ($trx) => $trx->payment_method_id ?? 0)
             ->map(function ($items, $paymentMethodId) {
+
                 $method = $items->first()->paymentMethod;
 
                 return [
                     'payment_method_id' => $paymentMethodId,
-                    'payment_method_name' => $method->name,
-                    'payment_method_kind' => $method->kind,
+                    'payment_method_name' => $method->name ?? 'Lainnya',
+                    'payment_method_kind' => $method->kind ?? 'other',
+
                     'total_transaksi' => $items->count(),
+
                     'total_nominal' => $items->sum(function ($trx) {
                         return max(0, ($trx->total_amount ?? 0) - ($trx->change ?? 0));
                     }),
@@ -101,7 +104,6 @@ class SalesSummaryService
             'total_profit' => $totalProfit,
         ]);
     }
-
     public function getHistorySalesSummaries()
     {
         $startDate = request('start_date')
@@ -112,7 +114,7 @@ class SalesSummaryService
             ? Carbon::createFromFormat('Y-m-d', request('end_date'))
             : now();
 
-        return SalesSummary::with(['cashReconciliation', 'details.paymentMethod'])
+        return SalesSummary::query()
             ->whereBetween('date', [
                 $startDate->copy()->startOfDay(),
                 $endDate->copy()->endOfDay(),
@@ -124,84 +126,85 @@ class SalesSummaryService
     
     public function store(array $data): SalesSummary
     {
+        
         return DB::transaction(function () use ($data) {
-            $userId = auth()->id();
-            
-            $lastSummary = SalesSummary::latest('date')->first();
-            $startTime = $lastSummary
-                ? Carbon::parse($lastSummary->date)->addSecond()
-                : now()->startOfDay();
 
-            $summaryData = $this->getSalesSummaryToday($startTime);
-            $byPaymentMethod = $summaryData->get('by_payment_method');
-            $totalSales = (float) $summaryData->get('total_pendapatan');
-            $totalTransactions = (int) $summaryData->get('total_transaksi');
+    $userId = auth()->id();
 
-            $summary = SalesSummary::create([
-                'date' => now(),
-                'total_sales' => $totalSales,
-                'total_transactions' => $totalTransactions,
-                'created_by' => $userId,
-            ]);
+    $summary = SalesSummary::create([
+        'date' => now(),
+        'total_sales' => $data['total_sales'],
+        'total_transactions' => $data['total_transactions'],
+        'created_by' => $userId,
+    ]);
 
-            $details = collect($byPaymentMethod)
-                ->filter(fn ($item) => (int) $item['payment_method_id'] > 0)
-                ->map(function ($item) use ($summary, $userId) {
-                    return [
-                        'sales_summary_id' => $summary->id,
-                        'payment_method_id' => $item['payment_method_id'],
-                        'total_amount' => $item['total_nominal'],
-                        'total_transactions' => $item['total_transaksi'],
-                        'created_by' => $userId,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ];
-                })
-                ->values()
-                ->toArray();
-
-            if (!empty($details)) {
-                SalesSummaryDetail::insert($details);
-            }
-
-            $actualCash = (float) ($data['actual_cash'] ?? 0);
-            $startingCash = (float) ($data['starting_cash'] ?? 0);
-
-            $cashPayment = collect($byPaymentMethod)->first(function ($item) {
-                return strtolower($item['payment_method_kind'] ?? '') === 'cash';
-            });
-            $cashSales = (float) ($cashPayment['total_nominal'] ?? 0);
-
-            $expectedCash = $startingCash + $cashSales;
-            $difference = $actualCash - $expectedCash;
-
-            $status = 'matched';
-            if ($difference < 0) {
-                $status = 'shortage';
-            } elseif ($difference > 0) {
-                $status = 'overage';
-            }
-
-            CashReconciliation::create([
+    $details = collect($data['details'])
+        ->filter(fn ($item) => (int) $item['payment_method_id'] > 0)
+        ->map(function ($item) use ($summary, $userId) {
+            return [
                 'sales_summary_id' => $summary->id,
-                'starting_cash' => $startingCash,
-                'expected_cash' => $expectedCash,
-                'actual_cash' => $actualCash,
-                'difference' => $difference,
-                'status' => $status,
-                'notes' => null,
+                'payment_method_id' => $item['payment_method_id'],
+                'total_amount' => $item['total_amount'],
+                'total_transactions' => $item['total_transactions'],
                 'created_by' => $userId,
-            ]);
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+        })
+        ->values()
+        ->toArray();
 
-            return $summary->load(['details.paymentMethod', 'cashReconciliation']);
-        });
+    if (!empty($details)) {
+        SalesSummaryDetail::insert($details);
+    }
+
+    return $summary->load('details');
+});
     }
 
     public function getDetail($id)
     {
-        return SalesSummary::with([
-            'details.paymentMethod',
-            'cashReconciliation'
-        ])->findOrFail($id);
+        return SalesSummary::with(['details.paymentMethod'])
+            ->findOrFail($id);
+    }
+
+    public function getPrintData($id): array
+    {
+        $summary = SalesSummary::with(['details.paymentMethod', 'creator'])
+            ->findOrFail($id);
+
+        $previousSummary = SalesSummary::query()
+            ->where('date', '<', $summary->date)
+            ->latest('date')
+            ->first();
+
+        $periodStart = $previousSummary
+            ? Carbon::parse($previousSummary->date)->addSecond()
+            : Carbon::parse($summary->date)->startOfDay();
+
+        $groupedDetails = $summary->details
+            ->groupBy(fn ($detail) => $detail->paymentMethod?->kind ?? 'Lainnya')
+            ->map(fn ($items, $kind) => [
+                'kind' => $kind,
+                'items' => $items,
+                'total_amount' => $items->sum(fn ($item) => (float) $item->total_amount),
+                'total_transactions' => $items->sum('total_transactions'),
+            ])
+            ->values();
+
+        $settings = Setting::whereIn('property', [
+            SellingService::BRAND_PHONE,
+            SellingService::BRAND_NAME,
+            SellingService::BRAND_ADDRESS,
+        ])->pluck('value', 'property');
+
+        return [
+            'summary'        => $summary,
+            'period_start'   => $periodStart,
+            'grouped'        => $groupedDetails,
+            'brand_name'     => $settings[SellingService::BRAND_NAME] ?? 'BERANDA RUMAH',
+            'brand_address'  => $settings[SellingService::BRAND_ADDRESS] ?? null,
+            'brand_phone'    => $settings[SellingService::BRAND_PHONE] ?? '-',
+        ];
     }
 }

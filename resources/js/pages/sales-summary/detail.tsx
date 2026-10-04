@@ -2,8 +2,15 @@ import { Head, Link } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { DollarSign, ShoppingCart, WalletCards, FileText } from 'lucide-react';
+import {
+    DollarSign,
+    ShoppingCart,
+    WalletCards,
+    FileText,
+    Printer,
+} from 'lucide-react';
 
 import { SalesSummary } from '@/lib/model';
 import salesSummary from '@/routes/sales-summary';
@@ -75,6 +82,18 @@ export default function Detail({ summary }: Props) {
                                 </p>
                             </div>
                         </div>
+                        <Button
+                            variant="outline"
+                            onClick={() =>
+                                window.open(
+                                    `/sales-summary/${summary.id}/print`,
+                                    'PRINT',
+                                    'height=400,width=600',
+                                )
+                            }
+                        >
+                            <Printer size={16} /> Cetak Rekap
+                        </Button>
                     </div>
                     <div className="mt-4 grid gap-4 md:grid-cols-2">
                         <Card>

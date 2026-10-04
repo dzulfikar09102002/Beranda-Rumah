@@ -13,7 +13,7 @@ export default function AppLogo() {
                 <img
                     src="/assets/images/logo-brand.png"
                     alt="Logo"
-                    className="h-10 w-auto"
+                    className="h-12 w-auto"
                 />
             </div>
         </>

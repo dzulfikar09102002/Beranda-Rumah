@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreSalesSummaryRequest extends FormRequest
@@ -17,25 +18,26 @@ class StoreSalesSummaryRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
-    public function rules(): array
-    {
-        return [
-            'actual_cash' => ['required', 'numeric', 'min:0'],
-            'starting_cash' => ['nullable', 'numeric', 'min:0'],
-        ];
-    }
+   public function rules(): array
+{
+    return [
+        'date' => ['required'],
 
-    /**
-     * Custom message validation (Opsional)
-     */
-    public function messages(): array
-    {
-        return [
-            'actual_cash.required' => 'Nominal uang fisik kas wajib diisi.',
-            'actual_cash.numeric' => 'Nominal uang fisik kas harus berupa angka.',
-            'actual_cash.min' => 'Nominal uang fisik kas tidak boleh minus.',
-        ];
-    }
+        'total_sales' => ['required', 'numeric'],
+
+        'total_transactions' => ['required', 'numeric'],
+
+        'details' => ['required', 'array'],
+
+        'details.*' => ['required', 'array'],
+
+        'details.*.payment_method_id' => ['required'],
+
+        'details.*.total_amount' => ['required'],
+
+        'details.*.total_transactions' => ['required'],
+    ];
+}
 }

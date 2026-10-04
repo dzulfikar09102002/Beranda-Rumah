@@ -45,6 +45,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('/sales-summary', SalesSummaryController::class)->except('show');
     Route::get('sales-summary/{id}/detail', [SalesSummaryController::class, 'detail'])
     ->name('sales-summary.detail');
+    Route::get('sales-summary/{id}/print', [SalesSummaryController::class, 'print'])
+    ->name('sales-summary.print');
 
     Route::resource('/payment-methods', PaymentMethodController::class)->except('show');
     Route::get('payment-methods/deleted', [PaymentMethodController::class, 'deleted'])
