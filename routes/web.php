@@ -16,6 +16,7 @@ use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\SalesReportController;
 use App\Http\Controllers\PurchasesReportController;
 use App\Http\Controllers\StockReportController;
+use App\Http\Controllers\StoreController;
 use App\Http\Controllers\LabaRugiController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\PurchaseMethodController;
@@ -23,10 +24,12 @@ use App\Exports\StockReportExport;
 use Maatwebsite\Excel\Facades\Excel;
 use Carbon\Carbon;
 
+Route::get('/', [StoreController::class, 'index'])->name('home');
+Route::get('/store/products', [StoreController::class, 'products'])
+    ->middleware('throttle:120,1')
+    ->name('store.products');
+
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('/', function () {
-        return redirect()->route('dashboard');
-    })->name('home');
    Route::get('/dashboard', [DashboardController::class, 'index'])
     ->name('dashboard');
     Route::get('/dashboard/expired-detail', [DashboardController::class, 'expiredDetail']);

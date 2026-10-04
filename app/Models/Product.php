@@ -19,6 +19,7 @@ class Product extends Model
         'selling_price',
         'minimum_stock',
         'expired_date',
+        'url_image',
         'created_by',
         'updated_by',
         'deleted_by',
